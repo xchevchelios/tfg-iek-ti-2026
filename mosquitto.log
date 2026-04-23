@@ -1,0 +1,349 @@
+1768572654: mosquitto version 2.0.22 starting
+1768572654: Config loaded from /mosquitto/config/mosquitto.conf.
+1768572654: Opening ipv4 listen socket on port 1883.
+1768572654: Opening ipv6 listen socket on port 1883.
+1768572654: Opening websockets listen socket on port 9001.
+1768572654: mosquitto version 2.0.22 running
+1768572732: New connection from 172.18.0.1:37200 on port 1883.
+1768572732: New client connected from 172.18.0.1:37200 as mqtt_sqlite_connector_v4 (p2, c1, k60).
+1768573827: mosquitto version 2.0.22 terminating
+1768573827: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1768574047: mosquitto version 2.0.22 starting
+1768574047: Config loaded from /mosquitto/config/mosquitto.conf.
+1768574047: Opening ipv4 listen socket on port 1883.
+1768574047: Opening ipv6 listen socket on port 1883.
+1768574047: Opening websockets listen socket on port 9001.
+1768574047: mosquitto version 2.0.22 running
+1768574074: New connection from 172.18.0.1:54304 on port 1883.
+1768574074: New client connected from 172.18.0.1:54304 as mqtt_sqlite_connector_v4 (p2, c1, k60).
+1768574135: New client connected from ::ffff:172.18.0.1:54258 as dashboard_1768574134197 (p2, c1, k60).
+1768574195: Client dashboard_1768574134197 closed its connection.
+1768574202: New client connected from ::ffff:172.18.0.1:40982 as dashboard_1768574200489 (p2, c1, k60).
+1768574233: Client dashboard_1768574200489 closed its connection.
+1768574245: mosquitto version 2.0.22 terminating
+1768574245: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1770920220: mosquitto version 2.0.22 starting
+1770920220: Config loaded from /mosquitto/config/mosquitto.conf.
+1770920220: Opening ipv4 listen socket on port 1883.
+1770920220: Opening ipv6 listen socket on port 1883.
+1770920220: Opening websockets listen socket on port 9001.
+1770920220: mosquitto version 2.0.22 running
+1770920272: New client connected from ::ffff:172.18.0.1:57548 as dashboard_1770920270777 (p2, c1, k60).
+1770920305: New connection from 172.18.0.1:39600 on port 1883.
+1770920305: New client connected from 172.18.0.1:39600 as mqtt_sqlite_connector_v4 (p2, c1, k60).
+1770920332: Client dashboard_1770920270777 closed its connection.
+1770920339: New client connected from ::ffff:172.18.0.1:48660 as dashboard_1770920337488 (p2, c1, k60).
+1770920399: Client dashboard_1770920337488 closed its connection.
+1770920406: New client connected from ::ffff:172.18.0.1:47448 as dashboard_1770920404473 (p2, c1, k60).
+1770920466: Client dashboard_1770920404473 closed its connection.
+1770920473: New client connected from ::ffff:172.18.0.1:34212 as dashboard_1770920471473 (p2, c1, k60).
+1770920510: Client dashboard_1770920471473 closed its connection.
+1770920514: mosquitto version 2.0.22 terminating
+1770920514: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1771686590: mosquitto version 2.0.22 starting
+1771686590: Config loaded from /mosquitto/config/mosquitto.conf.
+1771686590: Opening ipv4 listen socket on port 1883.
+1771686590: Opening ipv6 listen socket on port 1883.
+1771686590: Opening websockets listen socket on port 9001.
+1771686590: mosquitto version 2.0.22 running
+1771686619: New connection from 172.18.0.1:37258 on port 1883.
+1771686619: New client connected from 172.18.0.1:37258 as mqtt_sqlite_connector_v4 (p2, c1, k60).
+1771686626: New client connected from ::ffff:172.18.0.1:38630 as dashboard_1771686678011 (p2, c1, k60).
+1771686686: Client dashboard_1771686678011 closed its connection.
+1771686693: New client connected from ::ffff:172.18.0.1:51634 as dashboard_1771686744240 (p2, c1, k60).
+1771686753: Client dashboard_1771686744240 closed its connection.
+1771686760: New client connected from ::ffff:172.18.0.1:56242 as dashboard_1771686811243 (p2, c1, k60).
+1771686820: Client dashboard_1771686811243 closed its connection.
+1771686827: New client connected from ::ffff:172.18.0.1:35522 as dashboard_1771686878241 (p2, c1, k60).
+1771686887: Client dashboard_1771686878241 closed its connection.
+1771686894: New client connected from ::ffff:172.18.0.1:57288 as dashboard_1771686945083 (p2, c1, k60).
+1771687014: Client dashboard_1771686945083 closed its connection.
+1771687020: New client connected from ::ffff:172.18.0.1:51002 as dashboard_1771687071398 (p2, c1, k60).
+1771687080: Client dashboard_1771687071398 closed its connection.
+1771687087: New client connected from ::ffff:172.18.0.1:37266 as dashboard_1771687138229 (p2, c1, k60).
+1771687147: Client dashboard_1771687138229 closed its connection.
+1771687154: New client connected from ::ffff:172.18.0.1:42918 as dashboard_1771687205232 (p2, c1, k60).
+1771687214: Client dashboard_1771687205232 closed its connection.
+1771687221: New client connected from ::ffff:172.18.0.1:54434 as dashboard_1771687272228 (p2, c1, k60).
+1771687281: Client dashboard_1771687272228 closed its connection.
+1771687288: New client connected from ::ffff:172.18.0.1:50702 as dashboard_1771687339236 (p2, c1, k60).
+1771687321: New connection from 172.18.0.1:40612 on port 1883.
+1771687321: New client connected from 172.18.0.1:40612 as simulador_python_tls (p2, c1, k60).
+1771688391: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1771688638: Client simulador_python_tls closed its connection.
+1771688751: Client dashboard_1771687339236 closed its connection.
+1771688758: New client connected from ::ffff:172.18.0.1:38466 as dashboard_1771688809234 (p2, c1, k60).
+1771688806: Client dashboard_1771688809234 closed its connection.
+1771688807: New client connected from ::ffff:172.18.0.1:52026 as dashboard_1771688859203 (p2, c1, k60).
+1771688868: Client dashboard_1771688859203 closed its connection.
+1771688873: New client connected from ::ffff:172.18.0.1:58374 as dashboard_1771688925229 (p2, c1, k60).
+1771688934: Client dashboard_1771688925229 closed its connection.
+1771688941: New client connected from ::ffff:172.18.0.1:58202 as dashboard_1771688992235 (p2, c1, k60).
+1771688950: mosquitto version 2.0.22 terminating
+1771688950: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1771688950: Client dashboard_1771688992235 closed its connection.
+1771690331: mosquitto version 2.0.22 starting
+1771690331: Config loaded from /mosquitto/config/mosquitto.conf.
+1771690331: Opening ipv4 listen socket on port 1883.
+1771690331: Opening ipv6 listen socket on port 1883.
+1771690331: Opening websockets listen socket on port 9001.
+1771690331: mosquitto version 2.0.22 running
+1771690338: Client dashboard_1771690386230 closed its connection.
+1771690338: Client dashboard_1771690386230 closed its connection.
+1771690344: Client dashboard_1771690396233 closed its connection.
+1771690345: Client dashboard_1771690396233 closed its connection.
+1771690352: Client dashboard_1771690403236 closed its connection.
+1771690352: Client dashboard_1771690403236 closed its connection.
+1771690358: Client dashboard_1771690410234 closed its connection.
+1771690359: Client dashboard_1771690410234 closed its connection.
+1771690363: mosquitto version 2.0.22 terminating
+1771690363: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1771690364: mosquitto version 2.0.22 starting
+1771690364: Config loaded from /mosquitto/config/mosquitto.conf.
+1771690364: Opening ipv4 listen socket on port 1883.
+1771690364: Opening ipv6 listen socket on port 1883.
+1771690364: Opening websockets listen socket on port 9001.
+1771690364: mosquitto version 2.0.22 running
+1771690365: Client dashboard_1771690417235 closed its connection.
+1771690366: Client dashboard_1771690417235 closed its connection.
+1771690372: Client dashboard_1771690424237 closed its connection.
+1771690373: Client dashboard_1771690424237 closed its connection.
+1771690379: Client dashboard_1771690431233 closed its connection.
+1771690380: Client dashboard_1771690431233 closed its connection.
+1771690386: Client dashboard_1771690438236 closed its connection.
+1771690387: Client dashboard_1771690438236 closed its connection.
+1771690393: Client dashboard_1771690445235 closed its connection.
+1771690394: Client dashboard_1771690445235 closed its connection.
+1771690397: New connection from 172.18.0.1:60316 on port 1883.
+1771690397: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771690400: Client dashboard_1771690452230 closed its connection.
+1771690401: Client dashboard_1771690452230 closed its connection.
+1771690407: Client dashboard_1771690459228 closed its connection.
+1771690408: Client dashboard_1771690459228 closed its connection.
+1771690415: Client dashboard_1771690466232 closed its connection.
+1771690415: Client dashboard_1771690466232 closed its connection.
+1771690421: Client dashboard_1771690473241 closed its connection.
+1771690422: Client dashboard_1771690473241 closed its connection.
+1771690428: Client dashboard_1771690480243 closed its connection.
+1771690429: Client dashboard_1771690480243 closed its connection.
+1771690435: Client dashboard_1771690487228 closed its connection.
+1771690436: Client dashboard_1771690487228 closed its connection.
+1771690442: Client dashboard_1771690494240 closed its connection.
+1771690443: Client dashboard_1771690494240 closed its connection.
+1771690449: Client dashboard_1771690501237 closed its connection.
+1771690450: Client dashboard_1771690501237 closed its connection.
+1771690456: Client dashboard_1771690508231 closed its connection.
+1771690457: Client dashboard_1771690508231 closed its connection.
+1771690463: Client dashboard_1771690515237 closed its connection.
+1771690464: Client dashboard_1771690515237 closed its connection.
+1771690470: Client dashboard_1771690522233 closed its connection.
+1771690471: Client dashboard_1771690522233 closed its connection.
+1771690478: Client dashboard_1771690529228 closed its connection.
+1771690478: Client dashboard_1771690529228 closed its connection.
+1771690484: Client dashboard_1771690536234 closed its connection.
+1771690485: Client dashboard_1771690536234 closed its connection.
+1771690491: Client dashboard_1771690543237 closed its connection.
+1771690492: Client dashboard_1771690543237 closed its connection.
+1771690498: Client dashboard_1771690550232 closed its connection.
+1771690499: Client dashboard_1771690550232 closed its connection.
+1771690505: Client dashboard_1771690557240 closed its connection.
+1771690506: Client dashboard_1771690557240 closed its connection.
+1771690512: Client dashboard_1771690564242 closed its connection.
+1771690513: Client dashboard_1771690564242 closed its connection.
+1771690517: New connection from 172.18.0.1:57318 on port 1883.
+1771690517: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771690519: Client dashboard_1771690571227 closed its connection.
+1771690520: Client dashboard_1771690571227 closed its connection.
+1771690526: Client dashboard_1771690578238 closed its connection.
+1771690527: Client dashboard_1771690578238 closed its connection.
+1771690533: Client dashboard_1771690585237 closed its connection.
+1771690534: Client dashboard_1771690585237 closed its connection.
+1771690541: Client dashboard_1771690592232 closed its connection.
+1771690542: Client dashboard_1771690592232 closed its connection.
+1771690547: Client dashboard_1771690599230 closed its connection.
+1771690548: Client dashboard_1771690599230 closed its connection.
+1771690554: Client dashboard_1771690606232 closed its connection.
+1771690555: Client dashboard_1771690606232 closed its connection.
+1771690561: Client dashboard_1771690613238 closed its connection.
+1771690562: Client dashboard_1771690613238 closed its connection.
+1771690568: Client dashboard_1771690620231 closed its connection.
+1771690569: Client dashboard_1771690620231 closed its connection.
+1771690575: Client dashboard_1771690627231 closed its connection.
+1771690576: Client dashboard_1771690627231 closed its connection.
+1771690582: Client dashboard_1771690634242 closed its connection.
+1771690583: Client dashboard_1771690634242 closed its connection.
+1771690589: Client dashboard_1771690641234 closed its connection.
+1771690590: Client dashboard_1771690641234 closed its connection.
+1771690596: Client dashboard_1771690648235 closed its connection.
+1771690597: Client dashboard_1771690648235 closed its connection.
+1771690603: Client dashboard_1771690655227 closed its connection.
+1771690604: Client dashboard_1771690655227 closed its connection.
+1771690610: Client dashboard_1771690662241 closed its connection.
+1771690611: Client dashboard_1771690662241 closed its connection.
+1771690618: Client dashboard_1771690669234 closed its connection.
+1771690619: Client dashboard_1771690669234 closed its connection.
+1771690624: Client dashboard_1771690676232 closed its connection.
+1771690625: Client dashboard_1771690676232 closed its connection.
+1771690630: mosquitto version 2.0.22 terminating
+1771690630: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1771690631: mosquitto version 2.0.22 starting
+1771690631: Config loaded from /mosquitto/config/mosquitto.conf.
+1771690631: Opening ipv4 listen socket on port 1883.
+1771690631: Opening ipv6 listen socket on port 1883.
+1771690631: Opening websockets listen socket on port 9001.
+1771690631: mosquitto version 2.0.22 running
+1771690632: Client dashboard_1771690683233 closed its connection.
+1771690637: New connection from 172.18.0.1:51160 on port 1883.
+1771690637: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771690638: Client dashboard_1771690690232 closed its connection.
+1771690639: Client dashboard_1771690690232 closed its connection.
+1771690645: Client dashboard_1771690697229 closed its connection.
+1771690646: Client dashboard_1771690697229 closed its connection.
+1771690652: Client dashboard_1771690704229 closed its connection.
+1771690653: Client dashboard_1771690704229 closed its connection.
+1771690659: Client dashboard_1771690711235 closed its connection.
+1771690660: Client dashboard_1771690711235 closed its connection.
+1771690666: Client dashboard_1771690717800 closed its connection.
+1771690667: Client dashboard_1771690717800 closed its connection.
+1771690673: Client dashboard_1771690724712 closed its connection.
+1771690674: Client dashboard_1771690724712 closed its connection.
+1771690679: Client dashboard_1771690731283 closed its connection.
+1771690680: Client dashboard_1771690731283 closed its connection.
+1771690687: Client dashboard_1771690738232 closed its connection.
+1771690687: Client dashboard_1771690738232 closed its connection.
+1771690693: Client dashboard_1771690745229 closed its connection.
+1771690694: Client dashboard_1771690745229 closed its connection.
+1771690700: Client dashboard_1771690752234 closed its connection.
+1771690701: Client dashboard_1771690752234 closed its connection.
+1771690707: Client dashboard_1771690759231 closed its connection.
+1771690708: Client dashboard_1771690759231 closed its connection.
+1771690714: Client dashboard_1771690766232 closed its connection.
+1771690715: Client dashboard_1771690766232 closed its connection.
+1771690721: Client dashboard_1771690773241 closed its connection.
+1771690722: Client dashboard_1771690773241 closed its connection.
+1771690728: Client dashboard_1771690780239 closed its connection.
+1771690729: Client dashboard_1771690780239 closed its connection.
+1771690735: Client dashboard_1771690787231 closed its connection.
+1771690736: Client dashboard_1771690787231 closed its connection.
+1771690742: Client dashboard_1771690794239 closed its connection.
+1771690743: Client dashboard_1771690794239 closed its connection.
+1771690746: mosquitto version 2.0.22 terminating
+1771690746: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1771690747: mosquitto version 2.0.22 starting
+1771690747: Config loaded from /mosquitto/config/mosquitto.conf.
+1771690747: Opening ipv4 listen socket on port 1883.
+1771690747: Opening ipv6 listen socket on port 1883.
+1771690747: Opening websockets listen socket on port 9001.
+1771690747: mosquitto version 2.0.22 running
+1771690750: Client dashboard_1771690801228 closed its connection.
+1771690750: Client dashboard_1771690801228 closed its connection.
+1771690756: Client dashboard_1771690808240 closed its connection.
+1771690757: Client dashboard_1771690808240 closed its connection.
+1771690757: New connection from 172.18.0.1:35704 on port 1883.
+1771690757: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771690763: Client dashboard_1771690815242 closed its connection.
+1771690764: Client dashboard_1771690815242 closed its connection.
+1771690770: Client dashboard_1771690822234 closed its connection.
+1771690771: Client dashboard_1771690822234 closed its connection.
+1771690777: Client dashboard_1771690829229 closed its connection.
+1771690778: Client dashboard_1771690829229 closed its connection.
+1771690784: Client dashboard_1771690836235 closed its connection.
+1771690785: Client dashboard_1771690836235 closed its connection.
+1771690791: Client dashboard_1771690843229 closed its connection.
+1771690792: Client dashboard_1771690843229 closed its connection.
+1771690798: Client dashboard_1771690850235 closed its connection.
+1771690799: Client dashboard_1771690850235 closed its connection.
+1771690805: Client dashboard_1771690857230 closed its connection.
+1771690806: Client dashboard_1771690857230 closed its connection.
+1771690812: Client dashboard_1771690864235 closed its connection.
+1771690813: Client dashboard_1771690864235 closed its connection.
+1771690820: Client dashboard_1771690871227 closed its connection.
+1771690820: Client dashboard_1771690871227 closed its connection.
+1771690826: Client dashboard_1771690878233 closed its connection.
+1771690827: Client dashboard_1771690878233 closed its connection.
+1771690833: Client dashboard_1771690885241 closed its connection.
+1771690834: Client dashboard_1771690885241 closed its connection.
+1771690840: Client dashboard_1771690892231 closed its connection.
+1771690841: Client dashboard_1771690892231 closed its connection.
+1771690847: Client dashboard_1771690899230 closed its connection.
+1771690848: Client dashboard_1771690899230 closed its connection.
+1771690854: Client dashboard_1771690906235 closed its connection.
+1771690855: Client dashboard_1771690906235 closed its connection.
+1771690861: Client dashboard_1771690913233 closed its connection.
+1771690862: Client dashboard_1771690913233 closed its connection.
+1771690868: Client dashboard_1771690920234 closed its connection.
+1771690869: Client dashboard_1771690920234 closed its connection.
+1771690875: Client dashboard_1771690927228 closed its connection.
+1771690876: Client dashboard_1771690927228 closed its connection.
+1771690877: New connection from 172.18.0.1:48116 on port 1883.
+1771690877: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771690883: Client dashboard_1771690934243 closed its connection.
+1771690883: Client dashboard_1771690934243 closed its connection.
+1771690889: Client dashboard_1771690941239 closed its connection.
+1771690890: Client dashboard_1771690941239 closed its connection.
+1771690896: Client dashboard_1771690948253 closed its connection.
+1771690897: Client dashboard_1771690948253 closed its connection.
+1771690898: mosquitto version 2.0.22 terminating
+1771690898: Saving in-memory database to /mosquitto/data//mosquitto.db.
+1771690898: mosquitto version 2.0.22 starting
+1771690898: Config loaded from /mosquitto/config/mosquitto.conf.
+1771690898: Opening ipv4 listen socket on port 1883.
+1771690898: Opening ipv6 listen socket on port 1883.
+1771690898: Opening websockets listen socket on port 9001.
+1771690898: mosquitto version 2.0.22 running
+1771690903: Client dashboard_1771690955234 closed its connection.
+1771690904: Client dashboard_1771690955234 closed its connection.
+1771690907: Client dashboard_1771690958847 closed its connection.
+1771690908: Client dashboard_1771690958847 closed its connection.
+1771690914: Client dashboard_1771690966229 closed its connection.
+1771690915: Client dashboard_1771690966229 closed its connection.
+1771690921: Client dashboard_1771690973240 closed its connection.
+1771690922: Client dashboard_1771690973240 closed its connection.
+1771690928: Client dashboard_1771690980238 closed its connection.
+1771690929: Client dashboard_1771690980238 closed its connection.
+1771690935: Client dashboard_1771690987233 closed its connection.
+1771690936: Client dashboard_1771690987233 closed its connection.
+1771690942: Client dashboard_1771690994242 closed its connection.
+1771690943: Client dashboard_1771690994242 closed its connection.
+1771690950: Client dashboard_1771691001234 closed its connection.
+1771690950: Client dashboard_1771691001234 closed its connection.
+1771690956: Client dashboard_1771691008230 closed its connection.
+1771690957: Client dashboard_1771691008230 closed its connection.
+1771690963: Client dashboard_1771691015229 closed its connection.
+1771690964: Client dashboard_1771691015229 closed its connection.
+1771690970: Client dashboard_1771691022236 closed its connection.
+1771690971: Client dashboard_1771691022236 closed its connection.
+1771690977: Client dashboard_1771691029231 closed its connection.
+1771690978: Client dashboard_1771691029231 closed its connection.
+1771690984: Client dashboard_1771691036232 closed its connection.
+1771690985: Client dashboard_1771691036232 closed its connection.
+1771690991: Client dashboard_1771691043249 closed its connection.
+1771690992: Client dashboard_1771691043249 closed its connection.
+1771690997: New connection from 172.18.0.1:35500 on port 1883.
+1771690997: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771690998: Client dashboard_1771691050249 closed its connection.
+1771690999: Client dashboard_1771691050249 closed its connection.
+1771691005: Client dashboard_1771691057239 closed its connection.
+1771691006: Client dashboard_1771691057239 closed its connection.
+1771691012: Client dashboard_1771691064237 closed its connection.
+1771691013: Client dashboard_1771691064237 closed its connection.
+1771691020: Client dashboard_1771691071231 closed its connection.
+1771691021: Client dashboard_1771691071231 closed its connection.
+1771691027: Client dashboard_1771691079241 closed its connection.
+1771691028: Client dashboard_1771691079241 closed its connection.
+1771691034: Client <unknown> closed its connection.
+1771691035: New client connected from ::ffff:172.18.0.1:45702 as dashboard_1771691086860 (p2, c1, k60, u'tfg_nodo').
+1771691095: Client dashboard_1771691086860 closed its connection.
+1771691102: New client connected from ::ffff:172.18.0.1:34470 as dashboard_1771691153233 (p2, c1, k60, u'tfg_nodo').
+1771691117: New connection from 172.18.0.1:38860 on port 1883.
+1771691117: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771691162: Client dashboard_1771691153233 closed its connection.
+1771691164: New connection from 172.18.0.1:35816 on port 1883.
+1771691164: New client connected from 172.18.0.1:35816 as simulador_python_tls (p2, c1, k60, u'tfg_nodo').
+1771691168: New client connected from ::ffff:172.18.0.1:46494 as dashboard_1771691220249 (p2, c1, k60, u'tfg_nodo').
+1771691180: Client simulador_python_tls closed its connection.
+1771691237: New connection from 172.18.0.1:37218 on port 1883.
+1771691237: Client mqtt_sqlite_connector_v4 disconnected, not authorised.
+1771691277: Client dashboard_1771691220249 closed its connection.
+1771691278: mosquitto version 2.0.22 terminating
+1771691278: Saving in-memory database to /mosquitto/data//mosquitto.db.

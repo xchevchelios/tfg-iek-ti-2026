@@ -1,0 +1,15 @@
+# --- SEGURIDAD GLOBAL ---
+allow_anonymous false
+password_file /mosquitto/config/passwd
+
+# --- 1. Listener Principal (TCP interno para Nginx/IoT) ---
+listener 1883
+
+# --- 2. Listener WebSockets (Para tu web) ---
+listener 9001
+protocol websockets
+
+# --- 3. Persistencia y Logs ---
+persistence true
+persistence_location /mosquitto/data/
+log_dest file /mosquitto/log/mosquitto.log

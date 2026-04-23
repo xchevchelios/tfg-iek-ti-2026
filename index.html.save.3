@@ -1,0 +1,74 @@
+
+
+
+<body>
+
+    <header class="page-header">
+        <h1>Monitoreo de Calidad del Aire en el CAMPUS UNA-SLO</h1>
+    </header>
+
+    <div class="page-wrapper">
+
+        <aside class="sidebar">
+            <div class="logo-box">
+                <img src="/images/fpuna_logo_institucional.svg" alt="Logo FP-UNA">
+            </div>
+            <div class="logo-box">
+                <img src="/images/gisd-1.png" alt="Logo GISD">
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="station-container">
+                <h2 class="station-title">Estación 1</h2>
+                <div class="charts-grid">
+                    <div class="chart-box"><h3 class="chart-title">PM2.5</h3><canvas id="chart_estacion_01_pm25"></canvas></div>
+                    <div class="chart-box"><h3 class="chart-title">PM10</h3><canvas id="chart_estacion_01_pm10"></canvas></div>
+                    <div class="chart-box"><h3 class="chart-title">Temperatura</h3><canvas id="chart_estacion_01_temperatura"></canvas></div>
+                    <div class="chart-box"><h3 class="chart-title">Humedad</h3><canvas id="chart_estacion_01_humedad"></canvas></div>
+                </div>
+            </div>
+
+            <div class="station-container">
+                <h2 class="station-title">Estación 2</h2>
+                <div class="charts-grid">
+                    <div class="chart-box"><h3 class="chart-title">PM2.5</h3><canvas id="chart_estacion_02_pm25"></canvas></div>
+                    <div class="chart-box"><h3 class="chart-title">PM10</h3><canvas id="chart_estacion_02_pm10"></canvas></div>
+                    <div class="chart-box"><h3 class="chart-title">Temperatura</h3><canvas id="chart_estacion_02_temperatura"></canvas></div>
+                    <div class="chart-box"><h3 class="chart-title">Humedad</h3><canvas id="chart_estacion_02_humedad"></canvas></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="/scripts/main.js"></script>
+
+<div id="modal-historial-container" class="modal-container-oculto">
+        <div class="modal-contenido">
+            <span id="modal-cerrar" class="modal-cerrar-btn">&times;</span>
+            <h2 id="modal-titulo">Historial de...</h2>
+            
+            <div class="modal-controles">
+                <button class="rango-btn" data-rango="24h">Últimas 24h</button>
+                <button class="rango-btn" data-rango="7d">Últimos 7 días</button>
+                <button class="rango-btn" data-rango="30d">Último Mes</button>
+            </div>
+            
+            <div class="modal-controles-custom">
+                <label>Inicio:</label>
+                <input type="date" id="fecha-inicio">
+                <label>Fin:</label>
+                <input type="date" id="fecha-fin">
+                <button id="btn-custom-rango">Aplicar</button>
+            </div>
+            
+            <div class="modal-chart-container">
+                <canvas id="chart-historial"></canvas>
+            </div>
+        </div>
+    </div>
+    </body>
+</html>
+
+</body>
+</html>

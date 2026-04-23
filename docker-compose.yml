@@ -1,0 +1,17 @@
+version: '3'
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      # IMPORTANTE: Solo escuchamos en 127.0.0.1 (localhost)
+      # Esto obliga a que todo el tráfico pase por Nginx (puertos 8883 o 443)
+      # Nadie podrá conectarse al 1883 directamente desde internet.
+      - "127.0.0.1:1883:1883"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - ./config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./data:/mosquitto/data
+      - ./log:/mosquitto/log
+    # Eliminamos volúmenes de certificados, ya no se usan.
