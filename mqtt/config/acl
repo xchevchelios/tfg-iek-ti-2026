@@ -1,0 +1,7 @@
+# --- USUARIO ADMIN / GATEWAY ESP32 ---
+user tfg_nodo
+topic readwrite estaciones/#
+
+# --- USUARIO PÚBLICO / FRONTEND WEB ---
+user web_publico
+topic read estaciones/+/data

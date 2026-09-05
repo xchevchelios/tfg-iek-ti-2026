@@ -1,0 +1,283 @@
+/* ======================================================= */
+/* RESET DE CONTEXTO (PARA ARREGLAR MODAL FLOTANTE) */
+/* ======================================================= */
+html, body {
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    height: 100%; 
+    margin: 0;
+    padding: 0;
+}
+
+/* ======================================================= */
+/* GENERAL & LAYOUT */
+/* ======================================================= */
+.logo-fpuna{
+    width: 10%;
+    height: 20%;
+}
+.logo-gisd{
+    width: 25%;
+    height: 20%;
+}
+body {
+    font-family: Arial, sans-serif;
+    background-color: #e9ecef;
+    color: #343a40;
+    padding-top: 10px;
+    padding-bottom: 50px;
+}
+
+.container {
+    width: 95%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+/* ======================================================= */
+/* HEADER Y LOGOS */
+/* ======================================================= */
+
+header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.title-main {
+    font-size: 2em;
+    font-weight: bold;
+    color: #007bff;
+    margin-bottom: 30px;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.logo-una {
+    width: 150px;
+    height: auto;
+}
+
+.logo-giso {
+    width: 150px;
+    height: auto;
+}
+
+/* ======================================================= */
+/* ESTRUCTURA DEL DASHBOARD */
+/* ======================================================= */
+
+.station-section {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.station-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #212529;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 5px;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.chart-card {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.chart-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.chart-card h4 {
+    margin-top: 0;
+    font-size: 1.1em;
+    color: #495057;
+}
+
+canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+
+/* ============================================= */
+/* ESTILOS DE LA VENTANA MODAL (CORREGIDO)      */
+/* ============================================= */
+
+/* El fondo oscuro con backdrop blur */
+.modal-container-oculto {
+    display: none; 
+}
+
+.modal-container-visible {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    position: fixed !important;
+    z-index: 9999 !important;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* La caja blanca del modal */
+.modal-contenido {
+    background-color: #fefefe;
+    padding: 30px;
+    border: 1px solid #ccc;
+    width: 90%;
+    max-width: 950px;
+    max-height: 85vh;
+    overflow-y: auto;
+    border-radius: 20px;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.4);
+    position: relative;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* El botón de cerrar (X) */
+.modal-cerrar-btn {
+    color: #aaa;
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 32px;
+    font-weight: bold;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.modal-cerrar-btn:hover,
+.modal-cerrar-btn:focus {
+    color: #000;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Título del modal */
+#modal-titulo {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+    font-size: 1.8em;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+}
+
+/* Controles del modal */
+.modal-controles, .modal-controles-custom {
+    margin-bottom: 25px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.modal-controles-custom label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.modal-controles-custom input[type="date"] {
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.95em;
+}
+
+.rango-btn, #btn-custom-rango {
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+    font-size: 0.95em;
+}
+
+.rango-btn:hover, #btn-custom-rango:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-1px);
+}
+
+.rango-btn.activo {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* Contenedor del gráfico del modal */
+.modal-chart-container {
+    width: 100%;
+    height: 450px;
+    background-color: white;
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.modal-chart-container canvas {
+    max-height: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .modal-contenido {
+        width: 95%;
+        padding: 20px;
+        max-height: 90vh;
+    }
+    
+    #modal-titulo {
+        font-size: 1.4em;
+    }
+    
+    .modal-chart-container {
+        height: 350px;
+    }
+}

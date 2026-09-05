@@ -1,0 +1,137 @@
+import { COLOR_GREEN, COLOR_YELLOW, COLOR_RED, COLOR_CELESTE, COLOR_ORANGE } from './config.js';
+
+// --- LÓGICA DE SELECCIÓN DE COLOR PARA NIVELES DE MEDICION ---
+
+// PARA PM2.5
+function getPm25Color(value) {
+    if (value <= 15) return COLOR_GREEN;
+    if (value <= 35) return COLOR_YELLOW;
+    return COLOR_RED;
+}
+
+// PARA PM10
+function getPm10Color(value) {
+    if (value <= 45) return COLOR_GREEN;
+    if (value <= 75) return COLOR_YELLOW;
+    return COLOR_RED;
+}
+
+// PARA TEMPERATURA
+function getTemperaturaColor(value) {
+    if (value < 15) return COLOR_CELESTE;
+    if (value <= 25) return COLOR_GREEN;
+    return COLOR_ORANGE;
+}
+
+// PARA HUMEDAD
+function getHumedadColor(value) {
+    if (value < 30) return COLOR_YELLOW; // Seco
+    if (value <= 60) return COLOR_GREEN;  // Confortable
+    return COLOR_CELESTE;                 // Húmedo
+}
+
+const colorFunctions = {
+    'pm25': getPm25Color,
+    'pm10': getPm10Color,
+    'temperatura': getTemperaturaColor,
+    'humedad': getHumedadColor
+};
+
+// FUNCIÓN EXPORTADA para obtener el color de una métrica
+// Útil para el modal del historial
+export function getMetricColor(metricType, value = 20) {
+    const colorFunc = colorFunctions[metricType];
+    return colorFunc ? colorFunc(value) : '#007bff';
+}
+
+// CREAR LA GRÁFICA
+export function createChart(canvasId, yAxisLabel, metricType) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: yAxisLabel,
+                data: [],
+                fill: true,
+                backgroundColor: 'rgba(0, 123, 255, 0.05)',
+                pointBackgroundColor: [],
+                pointBorderColor: [],
+                pointRadius: 1,
+                pointHoverRadius: 7,
+                borderWidth: 2,
+                tension: 0.1
+            }]
+        },
+        options: {
+            metricType: metricType,
+            scales: { 
+                y: { 
+                    beginAtZero: false, 
+                    title: { 
+                        display: true, 
+                        text: yAxisLabel 
+                    } 
+                } 
+            },
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { 
+                legend: { 
+                    display: false 
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        }
+    });
+    return chart;
+}
+
+// ACTUALIZAR LA GRÁFICA
+export function updateChartData(chart, label, data) {
+    if (!chart || data === undefined || data === null) return;
+
+    const maxDataPoints = 20;
+    const labels = chart.data.labels;
+    const dataset = chart.data.datasets[0];
+
+    labels.push(label);
+    dataset.data.push(data);
+
+    const metricType = chart.options.metricType;
+    const colorFunc = colorFunctions[metricType];
+    const pointColor = colorFunc ? colorFunc(data) : '#007bff';
+    dataset.pointBackgroundColor.push(pointColor);
+    dataset.pointBorderColor.push(pointColor);
+
+    if (labels.length > maxDataPoints) {
+        labels.shift();
+        dataset.data.shift();
+        dataset.pointBackgroundColor.shift();
+        dataset.pointBorderColor.shift();
+    }
+    
+    updateChartGradient(chart);
+    chart.update('none');
+}
+
+// ACTUALIZAR EL GRADIENTE DE LA GRÁFICA
+function updateChartGradient(chart) {
+    if (!chart) return;
+    const dataset = chart.data.datasets[0];
+    if (dataset.data.length > 1) {
+        const gradient = chart.ctx.createLinearGradient(0, 0, chart.width, 0);
+        const colorFuncForGradient = colorFunctions[chart.options.metricType] || (() => '#007bff');
+        dataset.data.forEach((value, index) => {
+            const position = index / (dataset.data.length - 1);
+            gradient.addColorStop(position, colorFuncForGradient(value));
+        });
+        dataset.borderColor = gradient;
+    } else if (dataset.data.length === 1) {
+        dataset.borderColor = dataset.pointBackgroundColor[0];
+    }
+}

@@ -1,0 +1,31 @@
+# Entornos virtuales (se regeneran con: python3 -m venv venv && pip install -r requirements.txt)
+venv/
+*/venv/
+__pycache__/
+*.pyc
+ 
+# Base de datos en producción — NUNCA versionar, cambia con cada lectura de sensor
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+ 
+# Credenciales y configuración sensible
+*.env
+.env
+mqtt/config/passwd
+mosquitto_project/certs/*.key
+ 
+# Datos y logs runtime de Mosquitto
+mqtt/data/
+mqtt/log/
+mosquitto_project/data/
+mosquitto_project/log/
+ 
+# Archivos de respaldo de editores (nano/vim .save encontrados en el repo actual)
+*.save
+*.save.*
+ 
+# Sistema
+.DS_Store
+Thumbs.db
