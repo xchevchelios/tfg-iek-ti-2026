@@ -9,18 +9,39 @@ El sistema tiene dos mitades que se despliegan por separado:
 
 ## Frontend (Cloudflare)
 
-El proyecto de Cloudflare tiene que quedar configurado asi:
+El despliegue quedo como **Worker con assets estaticos**, no como Pages. Es el
+camino al que Cloudflare deriva hoy a los proyectos nuevos, y para un sitio
+estatico las dos opciones hacen exactamente lo mismo.
+
+La diferencia practica: en Pages el directorio de salida del build se configura
+en el dashboard; en Workers se declara en `frontend/wrangler.jsonc`, versionado
+junto al codigo. Por eso en la pantalla de build de Cloudflare **no existe** el
+campo "Build output directory" — no es que falte, es de otro producto.
+
+En el dashboard del Worker (Settings -> Build) solo hay que dejar:
 
 | Campo | Valor |
 |---|---|
 | Root directory | `frontend` |
 | Build command | `npm run build` |
-| Build output directory | `dist` |
+| Deploy command | `npx wrangler deploy` (es el valor por defecto) |
 
-> Si el proyecto fue creado antes de que el frontend tuviera build, hay que
-> **actualizar estos tres campos**: antes no habia build command y la salida era
-> la raiz. Sin el cambio, Cloudflare publica el codigo fuente en vez del sitio
-> compilado.
+El resto sale de `frontend/wrangler.jsonc`:
+
+```jsonc
+{
+  "name": "tfg-iek-ti-2026",     // tiene que coincidir con el nombre del Worker
+  "compatibility_date": "2026-09-05",
+  "assets": { "directory": "./dist", "not_found_handling": "404-page" }
+}
+```
+
+Validar la configuracion sin desplegar:
+
+```bash
+cd frontend
+npx wrangler deploy --dry-run
+```
 
 Las URLs y credenciales salen de `frontend/.env.production`. Cambiar de backend
 es editar ese archivo, no tocar codigo.

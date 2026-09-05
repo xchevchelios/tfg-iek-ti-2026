@@ -1,0 +1,28 @@
+{
+  // Configuracion del despliegue en Cloudflare Workers.
+  //
+  // El directorio de salida del build NO se configura en el dashboard: en
+  // Workers se declara aca, en el repo. Por eso en la pantalla de build de
+  // Cloudflare no aparece el campo "Build output directory" — ese campo existe
+  // en Pages, que es el producto anterior.
+  //
+  // Tenerlo versionado es mejor que tenerlo en el dashboard: la configuracion
+  // del despliegue viaja con el codigo y queda en el historial de git.
+
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Tiene que coincidir EXACTAMENTE con el nombre del Worker en el dashboard.
+  "name": "tfg-iek-ti-2026",
+  "compatibility_date": "2026-09-05",
+
+  "assets": {
+    // Salida de `vite build`, relativa a este archivo.
+    "directory": "./dist",
+
+    // Sitio multipagina (index.html + gestion.html), no una SPA: cada ruta
+    // corresponde a un archivo real. Con el html_handling por defecto
+    // ("auto-trailing-slash"), /gestion sirve gestion.html sin necesidad de
+    // reescrituras.
+    "not_found_handling": "404-page"
+  }
+}
