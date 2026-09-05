@@ -1,0 +1,29 @@
+# API REST del dashboard (Flask + gunicorn).
+# Instalar en /etc/systemd/system/tfg-api.service y ajustar las rutas y el
+# usuario si el repo no esta en /home/xxv4th0xx/tfg-sistema.
+
+[Unit]
+Description=TFG - API de calidad del aire (Flask + gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xxv4th0xx
+Group=xxv4th0xx
+WorkingDirectory=/home/xxv4th0xx/tfg-sistema/api
+EnvironmentFile=/home/xxv4th0xx/tfg-sistema/api/.env
+ExecStart=/home/xxv4th0xx/tfg-sistema/venv/bin/gunicorn --config gunicorn_config.py wsgi:app
+Restart=always
+RestartSec=5
+
+# Endurecimiento basico. ReadWritePaths tiene que incluir el directorio de la
+# base: SQLite necesita escribir tambien los archivos -wal y -shm, no solo el .db
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/xxv4th0xx/tfg-sistema/api
+
+[Install]
+WantedBy=multi-user.target

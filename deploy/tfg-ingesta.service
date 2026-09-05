@@ -1,0 +1,27 @@
+# Servicio de ingesta: escucha el broker MQTT y persiste en SQLite.
+# Antes esto corria dentro de una sesion de tmux, con lo cual no sobrevivia a un
+# reinicio de la VM: era el punto unico de falla del sistema.
+
+[Unit]
+Description=TFG - Ingesta MQTT a SQLite
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=xxv4th0xx
+Group=xxv4th0xx
+WorkingDirectory=/home/xxv4th0xx/tfg-sistema/api
+EnvironmentFile=/home/xxv4th0xx/tfg-sistema/api/.env
+ExecStart=/home/xxv4th0xx/tfg-sistema/venv/bin/python ingesta.py
+Restart=always
+RestartSec=10
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/xxv4th0xx/tfg-sistema/api
+
+[Install]
+WantedBy=multi-user.target

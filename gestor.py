@@ -9,7 +9,8 @@ import time
 SERVICIOS = [
     "nginx",
     "docker",                 # Contenedor de Mosquitto
-    "tfg-api",                # Tu servicio Python/Gunicorn
+    "tfg-api",                # API Flask/Gunicorn
+    "tfg-ingesta",            # Ingesta MQTT -> SQLite (antes corria en tmux)
     "google-cloud-ops-agent"  # Agente de monitoreo (consumo de ancho de banda)
 ]
 

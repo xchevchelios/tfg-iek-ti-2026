@@ -1,0 +1,278 @@
+/* Fundamentos compartidos por las dos paginas. */
+
+:root {
+  --azul: #007bff;
+  --azul-oscuro: #0056b3;
+  --fondo: #e9ecef;
+  --superficie: #ffffff;
+  --superficie-tenue: #f8f9fa;
+  --borde: #dee2e6;
+  --texto: #343a40;
+  --texto-tenue: #6c757d;
+  --verde: #28a745;
+  --rojo: #dc3545;
+  --amarillo: #ffc107;
+  --radio: 8px;
+  --sombra: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 10px 0 50px;
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  background-color: var(--fondo);
+  color: var(--texto);
+  line-height: 1.5;
+}
+
+.container {
+  width: 95%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+
+/* --- Encabezado --- */
+
+.encabezado { margin-bottom: 24px; }
+
+.encabezado__logos {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.logo { height: auto; }
+.logo--fpuna { width: min(140px, 22vw); }
+.logo--gisd { width: min(220px, 34vw); }
+
+.titulo {
+  margin: 0 0 12px;
+  font-size: clamp(1.4em, 3.2vw, 2em);
+  color: var(--azul);
+  text-align: center;
+}
+
+.encabezado__barra {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.enlace-gestion {
+  color: var(--azul);
+  font-weight: 600;
+  text-decoration: none;
+}
+.enlace-gestion:hover { text-decoration: underline; }
+
+/* Indicador de conexion en vivo: el color comunica el estado, el texto lo
+   nombra. Nunca solo el color. */
+.estado-conexion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  font-weight: 600;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  color: var(--texto-tenue);
+}
+.estado-conexion::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.estado-conexion[data-estado="conectado"] { color: var(--verde); }
+.estado-conexion[data-estado="reconectando"] { color: var(--amarillo); }
+.estado-conexion[data-estado="error"],
+.estado-conexion[data-estado="desconectado"] { color: var(--rojo); }
+
+/* --- Paneles y textos auxiliares --- */
+
+.panel {
+  background: var(--superficie);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 24px;
+  margin-bottom: 28px;
+}
+
+.panel__titulo {
+  margin: 0 0 16px;
+  font-size: 1.3em;
+  color: #212529;
+  border-bottom: 2px solid var(--azul);
+  padding-bottom: 6px;
+}
+
+.nota {
+  margin: 12px 0 0;
+  font-size: 0.9em;
+  color: var(--texto-tenue);
+}
+.nota--metodologica {
+  border-left: 3px solid var(--borde);
+  padding-left: 12px;
+}
+
+.vacio {
+  background: var(--superficie);
+  border-radius: var(--radio);
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--texto-tenue);
+}
+.vacio--error { color: var(--rojo); }
+
+/* --- Botones y formularios --- */
+
+button {
+  font: inherit;
+  font-weight: 600;
+  padding: 9px 16px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie-tenue);
+  color: var(--texto);
+  cursor: pointer;
+  transition: background-color 0.15s, transform 0.15s;
+}
+button:hover { background: #e2e6ea; transform: translateY(-1px); }
+button[type="submit"] { background: var(--azul); border-color: var(--azul); color: #fff; }
+button[type="submit"]:hover { background: var(--azul-oscuro); }
+
+input {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--texto);
+}
+input:focus-visible, button:focus-visible, a:focus-visible, canvas:focus-visible {
+  outline: 2px solid var(--azul);
+  outline-offset: 2px;
+}
+
+/* --- Avisos --- */
+
+.avisos {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(380px, 90vw);
+}
+
+.aviso {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #212529;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  font-size: 0.92em;
+  animation: aviso-entra 0.2s ease-out;
+}
+.aviso--ok { background: var(--verde); }
+.aviso--error { background: var(--rojo); }
+.aviso--saliendo { opacity: 0; transition: opacity 0.3s; }
+
+@keyframes aviso-entra {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Modal de historial --- */
+
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  animation: aparece 0.25s ease-in-out;
+}
+.modal-fondo[hidden] { display: none; }
+
+@keyframes aparece { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-caja {
+  position: relative;
+  width: 90%;
+  max-width: 950px;
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: 28px;
+  background: #fefefe;
+  border-radius: 16px;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.4);
+}
+
+.modal-cerrar {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  font-size: 30px;
+  line-height: 1;
+  color: #aaa;
+}
+.modal-cerrar:hover { color: #000; background: none; transform: none; }
+
+#modal-titulo {
+  margin: 0 0 18px;
+  font-size: 1.5em;
+  border-bottom: 2px solid var(--azul);
+  padding-bottom: 10px;
+}
+
+.modal-controles {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.modal-controles label { font-weight: 600; color: #495057; }
+
+.rango-btn.activo {
+  background: var(--azul);
+  border-color: var(--azul);
+  color: #fff;
+}
+
+.modal-grafico {
+  height: 450px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+.modal-grafico canvas { max-height: 100%; }
+
+.modal-estado { margin: 12px 0 0; color: var(--texto-tenue); font-size: 0.9em; }
+
+@media (max-width: 768px) {
+  .modal-caja { width: 95%; padding: 20px; max-height: 92vh; }
+  .modal-grafico { height: 320px; }
+}

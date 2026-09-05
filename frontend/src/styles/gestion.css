@@ -1,0 +1,50 @@
+/* Vista de gestion de nodos. */
+
+.formulario--linea {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.formulario--linea input { min-width: 260px; flex: 1 1 260px; }
+
+.formulario--grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+.campo-grupo { display: flex; flex-direction: column; gap: 5px; }
+.campo-grupo label { font-weight: 600; font-size: 0.9em; }
+.campo-grupo small { color: var(--texto-tenue); font-size: 0.8em; }
+.campo-grupo--accion { justify-content: flex-end; }
+
+.estado-token { font-size: 0.88em; color: var(--texto-tenue); }
+.estado-token[data-estado="ok"] { color: var(--verde); font-weight: 600; }
+
+.tabla-scroll { overflow-x: auto; }
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.94em;
+}
+.tabla th, .tabla td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--borde);
+  text-align: left;
+  vertical-align: middle;
+}
+.tabla thead th {
+  background: var(--superficie-tenue);
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--texto-tenue);
+}
+.tabla .campo { width: 100%; min-width: 90px; }
+.celda-acciones { white-space: nowrap; display: flex; gap: 8px; }
+
+.fila--inactiva { opacity: 0.55; }
+.fila--inactiva .celda-estado { font-style: italic; }

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23007bff'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%23fff' opacity='.35'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23fff'/%3E%3C/svg%3E">
+  <title>Gestión de nodos — Monitoreo de Calidad del Aire</title>
+</head>
+<body>
+  <div class="container">
+    <header class="encabezado">
+      <h1 class="titulo">Gestión de nodos</h1>
+      <div class="encabezado__barra">
+        <a class="enlace-gestion" href="/">← Volver al dashboard</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2 class="panel__titulo">Acceso de administración</h2>
+      <p class="nota">
+        Las operaciones de escritura requieren el token configurado en el
+        servidor. Se guarda solo en esta pestaña del navegador y se pierde al
+        cerrarla: no queda incluido en el sitio publicado.
+      </p>
+      <form id="form-token" class="formulario formulario--linea">
+        <label for="token">Token</label>
+        <input type="password" id="token" name="token" autocomplete="off" placeholder="Pegar el token">
+        <button type="submit">Guardar</button>
+        <button type="button" id="btn-olvidar-token" hidden>Olvidar</button>
+        <span id="estado-token" class="estado-token"></span>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel__titulo">Nueva estación</h2>
+      <form id="form-alta" class="formulario formulario--grilla">
+        <div class="campo-grupo">
+          <label for="alta-id">Identificador</label>
+          <input id="alta-id" name="id" required pattern="[a-z0-9_]{3,32}"
+                 placeholder="estacion_03" title="Minúsculas, dígitos y guion bajo (3 a 32 caracteres)">
+        </div>
+        <div class="campo-grupo">
+          <label for="alta-nombre">Nombre</label>
+          <input id="alta-nombre" name="nombre" required placeholder="Estación 3 — Bloque C">
+        </div>
+        <div class="campo-grupo">
+          <label for="alta-lat">Latitud</label>
+          <input id="alta-lat" name="latitud" type="number" step="any" placeholder="-25.3345">
+        </div>
+        <div class="campo-grupo">
+          <label for="alta-lon">Longitud</label>
+          <input id="alta-lon" name="longitud" type="number" step="any" placeholder="-57.5150">
+        </div>
+        <div class="campo-grupo campo-grupo--accion">
+          <button type="submit">Dar de alta</button>
+        </div>
+      </form>
+      <p class="nota">
+        El identificador debe coincidir exactamente con el que el nodo usa en su
+        topic MQTT (<code>estaciones/&lt;identificador&gt;/data</code>). Las
+        coordenadas son opcionales: sin ellas la estación funciona igual, pero no
+        aparece en el mapa.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel__titulo">Estaciones registradas</h2>
+      <div class="tabla-scroll">
+        <table class="tabla">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Latitud</th>
+              <th>Longitud</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tabla-estaciones"></tbody>
+        </table>
+      </div>
+      <p id="estado-tabla" class="nota" hidden></p>
+      <p class="nota">
+        La baja es lógica: la estación deja de aparecer en el dashboard, pero sus
+        mediciones históricas se conservan y siguen siendo consultables.
+      </p>
+    </section>
+  </div>
+
+  <script type="module" src="/src/pages/gestion.js"></script>
+</body>
+</html>
