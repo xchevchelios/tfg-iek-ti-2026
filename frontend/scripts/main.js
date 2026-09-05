@@ -2,7 +2,7 @@
 // MÓDULOS Y CONFIGURACIÓN
 // =================================================================
 
-import { brokerIp, brokerPort, brokerPath } from './config.js'; 
+import { brokerIp, brokerPort, brokerPath, API_BASE_URL } from './config.js'; 
 import { createChart, updateChartData, getMetricColor } from './chart-logic.js';
 
 // =================================================================
@@ -55,7 +55,7 @@ function initializeCharts() {
 async function fetchInitialData() {
     console.log("Obteniendo datos iniciales de la API...");
     try {
-        const response = await fetch('/api/datos_recientes');
+        const response = await fetch(`${API_BASE_URL}/api/datos_recientes`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -320,7 +320,7 @@ function handleCustomRangoClick() {
 async function fetchYActualizarGrafico(params) {
     const { stationId, metrica, label } = currentModalParams;
     
-    const url = new URL('/api/historial', window.location.origin);
+    const url = new URL('/api/historial', API_BASE_URL);
     url.searchParams.append('estacion', stationId);
     url.searchParams.append('metrica', metrica);
     

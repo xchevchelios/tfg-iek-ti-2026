@@ -1,8 +1,32 @@
+import os
+import re
 import sqlite3
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+
+# --- CORS ---
+# El frontend se sirve desde Cloudflare Pages, es decir desde OTRO origen que
+# esta API, asi que el navegador exige cabeceras CORS explicitas.
+# Origenes permitidos: los de la variable de entorno CORS_ORIGINS (separados por
+# coma) o, si no esta definida, la lista por defecto de abajo.
+_origenes_env = os.environ.get("CORS_ORIGINS", "").strip()
+if _origenes_env:
+    ORIGENES_PERMITIDOS = [o.strip() for o in _origenes_env.split(",") if o.strip()]
+else:
+    ORIGENES_PERMITIDOS = [
+        # Produccion y previews de Cloudflare Pages (<hash>.<proyecto>.pages.dev)
+        re.compile(r"^https://([a-z0-9-]+\.)?tfg-iek-ti-2026\.pages\.dev$"),
+        # Dominio actual (por si se sigue sirviendo el front desde nginx)
+        "https://air-quality-campus-una.duckdns.org",
+        # Desarrollo local
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
+
+CORS(app, resources={r"/api/*": {"origins": ORIGENES_PERMITIDOS}})
 
 DB_NAME = "sensores.db"
 
