@@ -40,6 +40,13 @@ API_TOKEN = os.environ.get("API_TOKEN", "").strip()
 
 DEBUG = _bool("FLASK_DEBUG", False)
 
+# Desfase del huso local respecto de UTC, en horas (Paraguay: -3, sin horario
+# de verano desde 2024). Se usa para traducir las fechas del calendario que
+# elige el usuario en el navegador a los timestamps UTC que guarda el gateway.
+# Es explicito y no se toma del reloj del servidor a proposito: asi la consulta
+# da el mismo resultado corra la VM en UTC o en cualquier otra zona.
+TZ_OFFSET_HORAS = float(os.environ.get("TZ_OFFSET_HORAS", "-3"))
+
 
 def origenes_cors():
     """Lista de origenes permitidos para CORS.

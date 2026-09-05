@@ -1,8 +1,9 @@
 """Endpoints de mediciones: lecturas recientes e historial."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request
 
+import config
 from db import METRICAS, get_connection
 
 bp = Blueprint("mediciones", __name__, url_prefix="/api")
@@ -14,6 +15,17 @@ RANGOS = {
 }
 
 LIMITE_MAXIMO = 500
+
+# El gateway publica los timestamps en UTC con sufijo Z y el servicio de ingesta
+# los guarda tal cual, asi que ese es el formato canonico en la base. Los
+# rangos de las consultas se construyen en el mismo formato: las columnas se
+# comparan como texto, de modo que mezclar hora local con hora UTC desplazaria
+# las consultas tantas horas como valga el huso.
+FORMATO_TS = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def _texto_utc(momento):
+    return momento.strftime(FORMATO_TS)
 
 
 @bp.get("/mediciones/ultimas")
@@ -87,11 +99,23 @@ def historial():
                 jsonify({"error": f"Rango no valido. Opciones: {', '.join(RANGOS)}."}),
                 400,
             )
-        desde = (datetime.now() - RANGOS[rango]).isoformat()
-        hasta = datetime.now().isoformat()
+        ahora = datetime.now(timezone.utc)
+        desde = _texto_utc(ahora - RANGOS[rango])
+        hasta = _texto_utc(ahora)
     elif start_date and end_date:
-        desde = f"{start_date}T00:00:00"
-        hasta = f"{end_date}T23:59:59"
+        # Las fechas llegan del <input type="date"> del navegador: son dias del
+        # calendario local. Hay que correrlas al UTC en que estan guardadas,
+        # o el primer y el ultimo dia del rango quedan recortados.
+        desplazamiento = timedelta(hours=config.TZ_OFFSET_HORAS)
+        try:
+            inicio_local = datetime.fromisoformat(f"{start_date}T00:00:00")
+            fin_local = datetime.fromisoformat(f"{end_date}T23:59:59")
+        except ValueError:
+            return jsonify({"error": "Fechas invalidas. Formato esperado: aaaa-mm-dd."}), 400
+        if inicio_local > fin_local:
+            return jsonify({"error": "La fecha de inicio es posterior a la de fin."}), 400
+        desde = _texto_utc(inicio_local - desplazamiento)
+        hasta = _texto_utc(fin_local - desplazamiento)
     else:
         return (
             jsonify({"error": "Faltan parametros de tiempo ('rango' o 'start'/'end')."}),
