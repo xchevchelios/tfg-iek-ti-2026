@@ -13,7 +13,7 @@ User=xxv4th0xx
 Group=xxv4th0xx
 WorkingDirectory=/home/xxv4th0xx/tfg-sistema/api
 EnvironmentFile=/home/xxv4th0xx/tfg-sistema/api/.env
-ExecStart=/home/xxv4th0xx/tfg-sistema/venv/bin/gunicorn --config gunicorn_config.py wsgi:app
+ExecStart=/home/xxv4th0xx/tfg-sistema/api/venv/bin/gunicorn --config gunicorn_config.py wsgi:app
 Restart=always
 RestartSec=5
 

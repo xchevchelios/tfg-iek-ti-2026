@@ -65,7 +65,7 @@ que el navegador ve un solo origen y CORS no interviene.
 
 ```bash
 cd ~/tfg-sistema
-source venv/bin/activate
+source api/venv/bin/activate
 pip install -r api/requirements.txt
 ```
 
