@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # --- CORS ---
-# El frontend se sirve desde Cloudflare Pages, es decir desde OTRO origen que
+# El frontend se sirve desde Cloudflare Workers, es decir desde OTRO origen que
 # esta API, asi que el navegador exige cabeceras CORS explicitas.
 # Origenes permitidos: los de la variable de entorno CORS_ORIGINS (separados por
 # coma) o, si no esta definida, la lista por defecto de abajo.
@@ -17,9 +17,13 @@ if _origenes_env:
     ORIGENES_PERMITIDOS = [o.strip() for o in _origenes_env.split(",") if o.strip()]
 else:
     ORIGENES_PERMITIDOS = [
-        # Produccion y previews de Cloudflare Pages (<hash>.<proyecto>.pages.dev)
-        re.compile(r"^https://([a-z0-9-]+\.)?tfg-iek-ti-2026\.pages\.dev$"),
-        # Dominio actual (por si se sigue sirviendo el front desde nginx)
+        # Frontend en Cloudflare Workers (produccion y URLs de preview,
+        # que tienen la forma <version>-<worker>.<subdominio>.workers.dev)
+        re.compile(
+            r"^https://([a-z0-9-]+-)?tfg-iek-ti-2026"
+            r"\.alvaro-aguinagalde13\.workers\.dev$"
+        ),
+        # Dominio de la VM (sigue sirviendo /api, /mqtt y el MQTTS del gateway)
         "https://air-quality-campus-una.duckdns.org",
         # Desarrollo local
         "http://localhost:8000",
