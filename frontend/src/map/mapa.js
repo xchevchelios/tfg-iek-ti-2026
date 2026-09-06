@@ -34,6 +34,14 @@ export function crearMapa(contenedor) {
      * @param {Record<string, object>} ultimaPorEstacion  ultima medicion de cada estacion
      */
     actualizar(estaciones, ultimaPorEstacion = {}) {
+      // Leaflet calcula el zoom a partir del tamanio del contenedor. Si el mapa
+      // se creo antes de que el layout terminara de asentarse -- lo que pasa
+      // seguido, porque los datos llegan por fetch mientras la pagina todavia
+      // se esta acomodando -- ese tamanio es incorrecto y fitBounds elige un
+      // zoom que no corresponde, tipicamente el mundo entero.
+      // Hay que recalcularlo ANTES de encuadrar, no despues.
+      mapa.invalidateSize();
+
       capaMarcadores.clearLayers();
 
       const ubicadas = estaciones.filter(
