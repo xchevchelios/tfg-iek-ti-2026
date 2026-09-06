@@ -5,15 +5,21 @@ Publica mediciones falsas en el broker MQTT, como si fueran del gateway.
 Mismo topic y mismo JSON que publica el ESP32, para poder ver el dashboard con
 datos sin tener el hardware prendido.
 
-    python3 publicar.py --clave gisd2026
-    python3 publicar.py --clave gisd2026 --historico 7
+Se puede correr sin argumentos (boton Run del editor): si no encuentra la clave
+la pide por consola.
+
+    python3 publicar.py
+    python3 publicar.py --historico 7
 """
 import argparse
+import getpass
 import json
+import os
 import random
 import ssl
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import paho.mqtt.client as mqtt
 
@@ -21,6 +27,27 @@ BROKER = "air-quality-campus-una.duckdns.org"
 PUERTO = 8883
 USUARIO = "tfg_nodo"
 NODOS = [1, 2]
+
+
+def buscar_clave():
+    """Busca la clave sin que haya que pasarla por argumento.
+
+    Orden: variable de entorno MQTT_PASS, despues el api/.env del repo (que
+    existe en la VM y esta en el .gitignore), y si no la encuentra la pide por
+    consola. No se guarda en este archivo a proposito: el repo esta versionado.
+    """
+    if os.environ.get("MQTT_PASS"):
+        return os.environ["MQTT_PASS"]
+
+    env = Path(__file__).resolve().parent.parent / "api" / ".env"
+    if env.exists():
+        for linea in env.read_text(encoding="utf-8").splitlines():
+            if linea.strip().startswith("MQTT_PASS="):
+                valor = linea.split("=", 1)[1].strip()
+                if valor:
+                    return valor
+
+    return getpass.getpass(f"Clave de {USUARIO}: ")
 
 
 def medicion(momento):
@@ -37,14 +64,17 @@ def medicion(momento):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--clave", required=True, help="clave del usuario tfg_nodo")
+    p.add_argument("--clave", help="clave de tfg_nodo (si falta, se busca en MQTT_PASS, en api/.env, o se pide)")
     p.add_argument("--intervalo", type=float, default=5, help="segundos entre publicaciones")
     p.add_argument("--historico", type=int, default=0, help="dias de datos pasados a generar y salir")
     p.add_argument("--cadencia", type=int, default=300, help="segundos entre muestras del historico")
     op = p.parse_args()
+    clave = op.clave or buscar_clave()
+    if not clave:
+        p.error("hace falta la clave del usuario MQTT")
 
     cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
-    cliente.username_pw_set(USUARIO, op.clave)
+    cliente.username_pw_set(USUARIO, clave)
     cliente.tls_set(cert_reqs=ssl.CERT_NONE)   # el gateway usa setInsecure()
     cliente.tls_insecure_set(True)
     cliente.connect(BROKER, PUERTO, 60)
