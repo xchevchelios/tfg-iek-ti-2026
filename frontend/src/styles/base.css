@@ -65,12 +65,12 @@ body {
   flex-wrap: wrap;
 }
 
-.enlace-gestion {
+.enlace-nav {
   color: var(--azul);
   font-weight: 600;
   text-decoration: none;
 }
-.enlace-gestion:hover { text-decoration: underline; }
+.enlace-nav:hover { text-decoration: underline; }
 
 /* Indicador de conexion en vivo: el color comunica el estado, el texto lo
    nombra. Nunca solo el color. */

@@ -65,7 +65,7 @@ function renderizarEstaciones(estaciones) {
     contenedorEstaciones.innerHTML = `
       <div class="vacio">
         <p>No hay estaciones registradas todavía.</p>
-        <p><a href="/gestion.html">Dar de alta la primera estación</a></p>
+        <p><a href="/admin">Dar de alta la primera estación</a></p>
       </div>`;
     return;
   }

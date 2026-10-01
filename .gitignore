@@ -39,3 +39,6 @@ npm-debug.log*
 # Variables de entorno locales del frontend
 frontend/.env.local
 frontend/.env.*.local
+
+# Cache local de wrangler (wrangler dev)
+.wrangler/

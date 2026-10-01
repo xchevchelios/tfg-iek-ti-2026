@@ -15,7 +15,7 @@ import {
 } from '../api/estaciones.js';
 import { mostrarAviso } from '../ui/aviso.js';
 import '../styles/base.css';
-import '../styles/gestion.css';
+import '../styles/admin.css';
 
 const formToken = document.getElementById('form-token');
 const inputToken = document.getElementById('token');

@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           dashboard: resolve(__dirname, 'index.html'),
-          gestion: resolve(__dirname, 'gestion.html'),
+          admin: resolve(__dirname, 'admin.html'),
         },
         output: {
           // Las librerias van en chunks propios: cambian mucho menos que el
