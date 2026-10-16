@@ -4,6 +4,9 @@ topic readwrite estaciones/#
 # Configuracion de la red que la API publica y el gateway lee. Rama propia,
 # fuera de estaciones/, para no cruzarse con el comodin de la ingesta.
 topic readwrite gateway/#
+# Metricas del broker, que lee gestor.py. Solo lectura y sin contenido de
+# mensajes: no amplia lo que ya puede hacer quien tenga esta credencial.
+topic read $SYS/#
 
 # --- USUARIO PÚBLICO / FRONTEND WEB ---
 user web_publico
