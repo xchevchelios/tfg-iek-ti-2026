@@ -47,9 +47,10 @@ def _validar_direccion(valor):
         direccion = int(valor)
     except (TypeError, ValueError):
         return None, "La direccion LoRa tiene que ser un numero entero."
-    # El campo de la trama binaria es un uint8, y el 0 queda reservado.
-    if not 1 <= direccion <= 255:
-        return None, "La direccion LoRa tiene que estar entre 1 y 255."
+    # El campo de la trama binaria es un uint8. El 0 queda sin usar y el 255
+    # es la difusion a todos los nodos (protocolo LoRa v2, orden MEDIR).
+    if not 1 <= direccion <= 254:
+        return None, "La direccion LoRa tiene que estar entre 1 y 254 (255 es la difusion)."
     return direccion, None
 
 

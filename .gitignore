@@ -42,3 +42,7 @@ frontend/.env.*.local
 
 # Cache local de wrangler (wrangler dev)
 .wrangler/
+
+# Credenciales del firmware del gateway (ver firmware/gateway/secretos.example.h)
+firmware/gateway/secretos.h
+firmware/pruebas/.deps/

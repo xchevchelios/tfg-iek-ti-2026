@@ -163,7 +163,7 @@ def migrar_direcciones_lora():
             if not coincidencia:
                 continue
             direccion = int(coincidencia.group(1))
-            if not 1 <= direccion <= 255:
+            if not 1 <= direccion <= 254:
                 continue
             try:
                 conn.execute(

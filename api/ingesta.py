@@ -40,6 +40,13 @@ def on_disconnect(client, userdata, rc, properties=None, reason=None):
 
 
 def on_message(client, userdata, msg):
+    # Un mensaje retenido no es una medicion nueva: es la ultima que el broker
+    # guardo, y la reentrega cada vez que la ingesta se suscribe. Guardarlo
+    # duplicaria esa fila en cada reinicio del servicio. (El firmware v1 del
+    # gateway publicaba las mediciones retenidas por error; el v2 ya no.)
+    if msg.retain:
+        log.info("Mensaje retenido en %s ignorado.", msg.topic)
+        return
     try:
         partes = msg.topic.split("/")
         if len(partes) < 2:
@@ -80,7 +87,7 @@ def on_message(client, userdata, msg):
             # solo pudo venir del nodo con direccion 7.
             coincidencia = re.fullmatch(r"estacion_(\d{1,3})", station_id)
             direccion = int(coincidencia.group(1)) if coincidencia else None
-            if direccion is not None and not 1 <= direccion <= 255:
+            if direccion is not None and not 1 <= direccion <= 254:
                 direccion = None
 
             conn.execute(
