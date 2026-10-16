@@ -15,6 +15,7 @@ import {
   crearEstacion,
   darDeBajaEstacion,
   listarEstaciones,
+  republicarConfiguracion,
 } from '../api/estaciones.js';
 import {
   actualizarUsuario,
@@ -36,6 +37,8 @@ const sesionUsuario = document.getElementById('sesion-usuario');
 const formAlta = document.getElementById('form-alta');
 const cuerpoEstaciones = document.getElementById('tabla-estaciones');
 const estadoEstaciones = document.getElementById('estado-tabla');
+const alertaGateway = document.getElementById('alerta-gateway');
+const btnRepublicar = document.getElementById('btn-republicar');
 
 const seccionUsuarios = document.getElementById('seccion-usuarios');
 const formUsuario = document.getElementById('form-usuario');
@@ -117,6 +120,7 @@ function filaEstacion(estacion) {
   if (!estacion.activa) fila.classList.add('fila--inactiva');
 
   fila.innerHTML = `
+    <td class="celda-direccion"></td>
     <td><code>${estacion.id}</code></td>
     <td><input class="campo" name="nombre" size="24"></td>
     <td><input class="campo" name="latitud" type="number" step="any" placeholder="—" size="10"></td>
@@ -130,17 +134,29 @@ function filaEstacion(estacion) {
 
   // Los valores se asignan por propiedad y no dentro del HTML, para que un
   // nombre con comillas o etiquetas no pueda inyectar marcado.
+  const celdaDireccion = fila.querySelector('.celda-direccion');
+  if (estacion.direccion_lora === null || estacion.direccion_lora === undefined) {
+    // Estaciones dadas de alta antes de que existiera el campo, o registradas
+    // por la ingesta con un identificador fuera de convencion. El gateway no las
+    // interroga, y por eso se distinguen a simple vista.
+    celdaDireccion.textContent = 'sin asignar';
+    celdaDireccion.dataset.sinDireccion = '';
+    celdaDireccion.title = 'El gateway no interroga a esta estación: no tiene dirección LoRa.';
+  } else {
+    celdaDireccion.textContent = estacion.direccion_lora;
+  }
+
   fila.querySelector('[name="nombre"]').value = estacion.nombre;
   fila.querySelector('[name="latitud"]').value = textoCoordenada(estacion.latitud);
   fila.querySelector('[name="longitud"]').value = textoCoordenada(estacion.longitud);
 
   fila.querySelector('[data-accion="guardar"]').addEventListener('click', async () => {
     try {
-      await actualizarEstacion(estacion.id, {
+      reflejarEstadoGateway(await actualizarEstacion(estacion.id, {
         nombre: fila.querySelector('[name="nombre"]').value.trim(),
         latitud: numeroONulo(fila.querySelector('[name="latitud"]').value),
         longitud: numeroONulo(fila.querySelector('[name="longitud"]').value),
-      });
+      }));
       mostrarAviso(`Estación ${estacion.id} actualizada.`, 'ok');
       await cargarEstaciones();
     } catch (error) {
@@ -151,13 +167,14 @@ function filaEstacion(estacion) {
   fila.querySelector('[data-accion="alternar"]').addEventListener('click', async () => {
     try {
       if (estacion.activa) {
-        await darDeBajaEstacion(estacion.id);
+        reflejarEstadoGateway(await darDeBajaEstacion(estacion.id));
         mostrarAviso(
-          `Estación ${estacion.id} dada de baja. Sus mediciones históricas se conservan.`,
+          `Estación ${estacion.id} dada de baja: el gateway deja de interrogarla y ` +
+          'sus mediciones históricas se conservan.',
           'ok'
         );
       } else {
-        await actualizarEstacion(estacion.id, { activa: true });
+        reflejarEstadoGateway(await actualizarEstacion(estacion.id, { activa: true }));
         mostrarAviso(`Estación ${estacion.id} reactivada.`, 'ok');
       }
       await cargarEstaciones();
@@ -168,6 +185,32 @@ function filaEstacion(estacion) {
 
   return fila;
 }
+
+/**
+ * Refleja si el gateway quedo al dia.
+ *
+ * Se llama con la respuesta de cada escritura: la base ya quedo bien, lo que
+ * puede haber fallado es la publicacion al broker. Mientras eso siga pendiente,
+ * el aviso no se va, porque describe un estado y no un evento.
+ */
+function reflejarEstadoGateway(respuesta) {
+  const publicada = respuesta?.configuracion_publicada;
+  if (publicada === undefined) return;
+  alertaGateway.hidden = publicada;
+}
+
+btnRepublicar.addEventListener('click', async () => {
+  btnRepublicar.disabled = true;
+  try {
+    await republicarConfiguracion();
+    alertaGateway.hidden = true;
+    mostrarAviso('El gateway recibió la lista de nodos.', 'ok');
+  } catch (error) {
+    manejarError(error);
+  } finally {
+    btnRepublicar.disabled = false;
+  }
+});
 
 async function cargarEstaciones() {
   estadoEstaciones.textContent = 'Cargando…';
@@ -187,14 +230,15 @@ formAlta.addEventListener('submit', async (evento) => {
   evento.preventDefault();
   const datos = Object.fromEntries(new FormData(formAlta));
   try {
-    await crearEstacion({
-      id: String(datos.id).trim().toLowerCase(),
+    const creada = await crearEstacion({
+      direccion_lora: numeroONulo(datos.direccion_lora),
       nombre: String(datos.nombre).trim(),
       latitud: numeroONulo(datos.latitud),
       longitud: numeroONulo(datos.longitud),
     });
     formAlta.reset();
-    mostrarAviso('Estación creada.', 'ok');
+    reflejarEstadoGateway(creada);
+    mostrarAviso(`Estación ${creada.id} creada en la dirección ${creada.direccion_lora}.`, 'ok');
     await cargarEstaciones();
   } catch (error) {
     manejarError(error);

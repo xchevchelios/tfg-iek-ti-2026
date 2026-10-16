@@ -1,4 +1,5 @@
 """Acceso a SQLite: conexiones, esquema y migraciones idempotentes."""
+import re
 import sqlite3
 from datetime import datetime, timezone
 
@@ -40,13 +41,34 @@ def init_db():
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS estaciones (
-                id         TEXT PRIMARY KEY,
-                nombre     TEXT NOT NULL,
-                latitud    REAL,
-                longitud   REAL,
-                activa     INTEGER NOT NULL DEFAULT 1,
-                creada_en  TEXT NOT NULL
+                id             TEXT PRIMARY KEY,
+                nombre         TEXT NOT NULL,
+                latitud        REAL,
+                longitud       REAL,
+                activa         INTEGER NOT NULL DEFAULT 1,
+                direccion_lora INTEGER,
+                creada_en      TEXT NOT NULL
             )
+            """
+        )
+
+        # La direccion LoRa es el numero que viaja en la trama binaria y lo
+        # unico que el gateway entiende. Antes estaba implicita en el nombre
+        # ('estacion_01' -> 1), un contrato que nada validaba y que se rompia
+        # con cualquier identificador fuera de la convencion. Ahora es un campo
+        # propio, y el identificador se deriva de el.
+        try:
+            conn.execute("ALTER TABLE estaciones ADD COLUMN direccion_lora INTEGER")
+        except sqlite3.OperationalError:
+            pass  # la columna ya existia
+
+        # UNIQUE no se puede agregar con ALTER TABLE, pero un indice unico da
+        # la misma garantia. Es parcial para que varias filas sin direccion
+        # asignada no choquen entre si.
+        conn.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_estaciones_lora
+            ON estaciones (direccion_lora) WHERE direccion_lora IS NOT NULL
             """
         )
 
@@ -123,6 +145,40 @@ def init_db():
         conn.commit()
 
 
+def migrar_direcciones_lora():
+    """Completa la direccion LoRa de las estaciones que ya existian.
+
+    Parsea el numero del identificador ('estacion_07' -> 7). Parsear esta bien
+    como paso de migracion, una sola vez; mal como comportamiento permanente,
+    que es lo que hacia el sistema antes.
+    """
+    asignadas = []
+    with get_connection() as conn:
+        filas = conn.execute(
+            "SELECT id FROM estaciones WHERE direccion_lora IS NULL"
+        ).fetchall()
+
+        for fila in filas:
+            coincidencia = re.fullmatch(r"estacion_(\d{1,3})", fila["id"])
+            if not coincidencia:
+                continue
+            direccion = int(coincidencia.group(1))
+            if not 1 <= direccion <= 255:
+                continue
+            try:
+                conn.execute(
+                    "UPDATE estaciones SET direccion_lora = ? WHERE id = ?",
+                    (direccion, fila["id"]),
+                )
+                asignadas.append((fila["id"], direccion))
+            except sqlite3.IntegrityError:
+                # Otra estacion ya tiene esa direccion: queda sin asignar para
+                # que una persona lo resuelva desde el panel.
+                pass
+        conn.commit()
+    return asignadas
+
+
 def sembrar_estaciones_existentes():
     """Da de alta en 'estaciones' los station_id que ya aparecen en mediciones.
 
@@ -155,8 +211,11 @@ def sembrar_estaciones_existentes():
 
 if __name__ == "__main__":
     init_db()
+    migradas = migrar_direcciones_lora()
     nuevas = sembrar_estaciones_existentes()
     print(f"Esquema listo en {DB_PATH}")
+    for id_estacion, direccion in migradas:
+        print(f"  direccion LoRa asignada: {id_estacion} -> {direccion}")
     if nuevas:
         print("Estaciones dadas de alta desde las mediciones existentes:")
         for station_id in nuevas:

@@ -17,3 +17,14 @@ export function actualizarEstacion(id, datos) {
 export function darDeBajaEstacion(id) {
   return api.del(`/api/estaciones/${encodeURIComponent(id)}`);
 }
+
+/**
+ * Reenvia al gateway la lista vigente de nodos.
+ *
+ * Hace falta cuando una escritura anterior quedo bien en la base pero el broker
+ * no estaba disponible para recibir la configuracion. Es idempotente: publica
+ * el estado actual completo, no un cambio, asi que repetirla no rompe nada.
+ */
+export function republicarConfiguracion() {
+  return api.post('/api/estaciones/configuracion');
+}

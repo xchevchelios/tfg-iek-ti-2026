@@ -1,18 +1,20 @@
 """Endpoints de estaciones: el catalogo de nodos de la red."""
-import re
 import sqlite3
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 
+from configuracion_red import MAX_NODOS, direcciones_activas, publicar_configuracion
 from db import get_connection
 from seguridad import registrar, requiere_rol
 
 bp = Blueprint("estaciones", __name__, url_prefix="/api/estaciones")
 
-# Los identificadores viajan en topics MQTT ('estaciones/<id>/data'), asi que
-# se restringen a minusculas, digitos y guion bajo.
-PATRON_ID = re.compile(r"^[a-z0-9_]{3,32}$")
+# El identificador es el segmento del topic MQTT y lo arma el gateway a partir
+# de la direccion LoRa. Por eso no lo escribe una persona: se deriva, y asi no
+# puede quedar desalineado con lo que el gateway publica.
+def _id_desde_direccion(direccion):
+    return f"estacion_{direccion:02d}"
 
 
 def _fila_a_dict(fila):
@@ -22,6 +24,7 @@ def _fila_a_dict(fila):
         "latitud": fila["latitud"],
         "longitud": fila["longitud"],
         "activa": bool(fila["activa"]),
+        "direccion_lora": fila["direccion_lora"],
         "creada_en": fila["creada_en"],
     }
 
@@ -39,18 +42,27 @@ def _validar_coordenada(valor, nombre, minimo, maximo):
     return numero, None
 
 
+def _validar_direccion(valor):
+    try:
+        direccion = int(valor)
+    except (TypeError, ValueError):
+        return None, "La direccion LoRa tiene que ser un numero entero."
+    # El campo de la trama binaria es un uint8, y el 0 queda reservado.
+    if not 1 <= direccion <= 255:
+        return None, "La direccion LoRa tiene que estar entre 1 y 255."
+    return direccion, None
+
+
 @bp.get("")
 def listar():
     """Lista las estaciones. Por defecto solo las activas."""
     incluir_inactivas = request.args.get("incluir_inactivas", "").lower() in {
-        "1",
-        "true",
-        "si",
+        "1", "true", "si",
     }
     sql = "SELECT * FROM estaciones"
     if not incluir_inactivas:
         sql += " WHERE activa = 1"
-    sql += " ORDER BY id ASC"
+    sql += " ORDER BY direccion_lora IS NULL, direccion_lora ASC, id ASC"
 
     with get_connection() as conn:
         filas = conn.execute(sql).fetchall()
@@ -60,20 +72,12 @@ def listar():
 @bp.post("")
 @requiere_rol("admin", "operador")
 def crear():
-    """Da de alta una estacion nueva."""
+    """Da de alta una estacion. El identificador se deriva de la direccion."""
     datos = request.get_json(silent=True) or {}
 
-    station_id = str(datos.get("id", "")).strip().lower()
-    if not PATRON_ID.match(station_id):
-        return (
-            jsonify(
-                {
-                    "error": "El identificador solo admite minusculas, digitos y "
-                    "guion bajo, entre 3 y 32 caracteres."
-                }
-            ),
-            400,
-        )
+    direccion, error = _validar_direccion(datos.get("direccion_lora"))
+    if error:
+        return jsonify({"error": error}), 400
 
     nombre = str(datos.get("nombre", "")).strip()
     if not nombre:
@@ -86,32 +90,66 @@ def crear():
     if error:
         return jsonify({"error": error}), 400
 
+    station_id = _id_desde_direccion(direccion)
     ahora = datetime.now(timezone.utc).isoformat()
+
     try:
         with get_connection() as conn:
+            activas = conn.execute(
+                "SELECT COUNT(*) FROM estaciones "
+                "WHERE activa = 1 AND direccion_lora IS NOT NULL"
+            ).fetchone()[0]
+            if activas >= MAX_NODOS:
+                return (
+                    jsonify({
+                        "error": f"La red admite hasta {MAX_NODOS} nodos activos. "
+                                 "El limite lo impone el tiempo del ciclo de "
+                                 "interrogacion, no la memoria del gateway."
+                    }),
+                    409,
+                )
+
             conn.execute(
                 """
-                INSERT INTO estaciones (id, nombre, latitud, longitud, activa, creada_en)
-                VALUES (?, ?, ?, ?, 1, ?)
+                INSERT INTO estaciones
+                    (id, nombre, latitud, longitud, activa, direccion_lora, creada_en)
+                VALUES (?, ?, ?, ?, 1, ?, ?)
                 """,
-                (station_id, nombre, latitud, longitud, ahora),
+                (station_id, nombre, latitud, longitud, direccion, ahora),
             )
             conn.commit()
             fila = conn.execute(
                 "SELECT * FROM estaciones WHERE id = ?", (station_id,)
             ).fetchone()
     except sqlite3.IntegrityError:
-        return jsonify({"error": f"Ya existe una estacion con id '{station_id}'."}), 409
+        return (
+            jsonify({"error": f"Ya existe una estacion con la direccion LoRa {direccion}."}),
+            409,
+        )
 
-    registrar("alta_estacion", station_id, nombre)
-    return jsonify(_fila_a_dict(fila)), 201
+    registrar("alta_estacion", station_id, f"{nombre} (LoRa {direccion})")
+    respuesta = _fila_a_dict(fila)
+    respuesta["configuracion_publicada"] = publicar_configuracion()
+    return jsonify(respuesta), 201
 
 
 @bp.put("/<station_id>")
 @requiere_rol("admin", "operador")
 def actualizar(station_id):
-    """Edita nombre, coordenadas o estado de una estacion. El id no se cambia."""
+    """Edita nombre, coordenadas o estado. El identificador y la direccion no."""
     datos = request.get_json(silent=True) or {}
+
+    # La direccion LoRa es la identidad del nodo: el gateway la usa para
+    # interrogarlo y para armar el topic donde publica. Cambiarla dejaria las
+    # mediciones historicas colgadas de un identificador que ya nadie alimenta.
+    if "direccion_lora" in datos:
+        return (
+            jsonify({
+                "error": "La direccion LoRa no se puede cambiar. Dá de baja la "
+                         "estacion y creá una nueva con la direccion correcta."
+            }),
+            400,
+        )
 
     with get_connection() as conn:
         fila = conn.execute(
@@ -134,9 +172,7 @@ def actualizar(station_id):
 
         longitud = fila["longitud"]
         if "longitud" in datos:
-            longitud, error = _validar_coordenada(
-                datos["longitud"], "longitud", -180, 180
-            )
+            longitud, error = _validar_coordenada(datos["longitud"], "longitud", -180, 180)
             if error:
                 return jsonify({"error": error}), 400
 
@@ -145,11 +181,7 @@ def actualizar(station_id):
             activa = 1 if datos["activa"] else 0
 
         conn.execute(
-            """
-            UPDATE estaciones
-            SET nombre = ?, latitud = ?, longitud = ?, activa = ?
-            WHERE id = ?
-            """,
+            "UPDATE estaciones SET nombre = ?, latitud = ?, longitud = ?, activa = ? WHERE id = ?",
             (nombre, latitud, longitud, activa, station_id),
         )
         conn.commit()
@@ -158,7 +190,12 @@ def actualizar(station_id):
         ).fetchone()
 
     registrar("edicion_estacion", station_id, nombre)
-    return jsonify(_fila_a_dict(fila))
+    respuesta = _fila_a_dict(fila)
+    # Solo el estado de actividad cambia la lista que escucha el gateway.
+    respuesta["configuracion_publicada"] = (
+        publicar_configuracion() if "activa" in datos else None
+    )
+    return jsonify(respuesta)
 
 
 @bp.delete("/<station_id>")
@@ -180,4 +217,30 @@ def dar_de_baja(station_id):
         conn.commit()
 
     registrar("baja_estacion", station_id)
-    return jsonify({"id": station_id, "activa": False})
+    return jsonify({
+        "id": station_id,
+        "activa": False,
+        "configuracion_publicada": publicar_configuracion(),
+    })
+
+
+@bp.post("/configuracion")
+@requiere_rol("admin", "operador")
+def republicar():
+    """Reenvia la configuracion al gateway.
+
+    Sirve cuando una publicacion anterior fallo porque el broker no estaba
+    disponible: la base ya quedo bien, lo que falta es que el gateway se entere.
+    """
+    publicada = publicar_configuracion()
+    registrar("republicar_configuracion", "gateway", "ok" if publicada else "fallo")
+    cuerpo = {
+        "configuracion_publicada": publicada,
+        "nodos": direcciones_activas(),
+    }
+    if not publicada:
+        cuerpo["error"] = ("El broker no acepto la configuracion. "
+                           "La lista de nodos en la base esta bien; lo que falta "
+                           "es que el gateway la reciba.")
+        return jsonify(cuerpo), 503
+    return jsonify(cuerpo)

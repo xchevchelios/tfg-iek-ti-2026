@@ -41,9 +41,11 @@
         <h2 class="panel__titulo">Nueva estación</h2>
         <form id="form-alta" class="formulario formulario--grilla">
           <div class="campo-grupo">
-            <label for="alta-id">Identificador</label>
-            <input id="alta-id" name="id" required pattern="[a-z0-9_]{3,32}"
-                   placeholder="estacion_03" title="Minúsculas, dígitos y guion bajo (3 a 32 caracteres)">
+            <label for="alta-direccion">Dirección LoRa</label>
+            <input id="alta-direccion" name="direccion_lora" type="number"
+                   required min="1" max="255" step="1" placeholder="3"
+                   title="Número de 1 a 255, el mismo que tiene grabado el nodo">
+            <small>La que tiene grabada el nodo</small>
           </div>
           <div class="campo-grupo">
             <label for="alta-nombre">Nombre</label>
@@ -62,20 +64,32 @@
           </div>
         </form>
         <p class="nota">
-          El identificador debe coincidir exactamente con el que el nodo usa en su
-          topic MQTT (<code>estaciones/&lt;identificador&gt;/data</code>). Las
-          coordenadas son opcionales: sin ellas la estación funciona igual, pero no
-          aparece en el mapa.
+          La dirección LoRa es el número con el que el gateway interroga al nodo, y
+          es la única cosa que hay que hacer coincidir con el firmware. El
+          identificador (<code>estacion_NN</code>) y el topic MQTT
+          (<code>estaciones/estacion_NN/data</code>) se derivan de ella. Al dar de
+          alta, el gateway recibe la nueva lista de nodos y empieza a interrogar al
+          nuevo sin que haya que reprogramarlo. Las coordenadas son opcionales: sin
+          ellas la estación funciona igual, pero no aparece en el mapa.
         </p>
       </section>
 
       <section class="panel">
         <h2 class="panel__titulo">Estaciones registradas</h2>
+        <div id="alerta-gateway" class="alerta-gateway" hidden>
+          <p>
+            El cambio quedó guardado en la base, pero el broker no recibió la
+            nueva lista de nodos: hasta que la reciba, el gateway sigue
+            interrogando a los de antes.
+          </p>
+          <button type="button" id="btn-republicar">Reenviar al gateway</button>
+        </div>
         <div class="tabla-scroll">
           <table class="tabla">
             <thead>
               <tr>
-                <th>ID</th><th>Nombre</th><th>Latitud</th><th>Longitud</th>
+                <th>Dir. LoRa</th><th>ID</th><th>Nombre</th>
+                <th>Latitud</th><th>Longitud</th>
                 <th>Estado</th><th>Acciones</th>
               </tr>
             </thead>
@@ -84,8 +98,11 @@
         </div>
         <p id="estado-tabla" class="nota" hidden></p>
         <p class="nota">
-          La baja es lógica: la estación deja de aparecer en el dashboard, pero sus
-          mediciones históricas se conservan y siguen siendo consultables.
+          La baja es lógica: la estación deja de aparecer en el dashboard y el
+          gateway deja de interrogarla, pero sus mediciones históricas se conservan
+          y siguen siendo consultables. La dirección LoRa no se puede editar: si un
+          nodo cambia de dirección, se da de baja la estación y se crea otra, para
+          que el historial no quede atribuido a un nodo que ya no es el mismo.
         </p>
       </section>
 

@@ -5,6 +5,7 @@ significaba que no sobrevivia a un reinicio de la VM. Ahora corre bajo systemd
 (unit tfg-ingesta, con Restart=always) y toma su configuracion del entorno.
 """
 import json
+import re
 import logging
 import signal
 import sys
@@ -12,7 +13,12 @@ import sys
 import paho.mqtt.client as mqtt
 
 import config
-from db import get_connection, init_db, sembrar_estaciones_existentes
+from db import (
+    get_connection,
+    init_db,
+    migrar_direcciones_lora,
+    sembrar_estaciones_existentes,
+)
 
 log = logging.getLogger("ingesta")
 
@@ -68,12 +74,22 @@ def on_message(client, userdata, msg):
             # Alta automatica de estaciones desconocidas: si aparece un nodo
             # nuevo en el broker, queda registrado con las coordenadas vacias en
             # vez de perderse. Se completa despues desde la pagina de gestion.
+            #
+            # La direccion LoRa se deduce del identificador porque el gateway lo
+            # construyo a partir de ella: el topic estaciones/estacion_07/data
+            # solo pudo venir del nodo con direccion 7.
+            coincidencia = re.fullmatch(r"estacion_(\d{1,3})", station_id)
+            direccion = int(coincidencia.group(1)) if coincidencia else None
+            if direccion is not None and not 1 <= direccion <= 255:
+                direccion = None
+
             conn.execute(
                 """
-                INSERT OR IGNORE INTO estaciones (id, nombre, latitud, longitud, activa, creada_en)
-                VALUES (?, ?, NULL, NULL, 1, ?)
+                INSERT OR IGNORE INTO estaciones
+                    (id, nombre, latitud, longitud, activa, direccion_lora, creada_en)
+                VALUES (?, ?, NULL, NULL, 1, ?, ?)
                 """,
-                (station_id, station_id.replace("_", " ").capitalize(), timestamp),
+                (station_id, station_id.replace("_", " ").capitalize(), direccion, timestamp),
             )
             conn.commit()
 
@@ -101,6 +117,7 @@ def main():
     )
 
     init_db()
+    migrar_direcciones_lora()
     nuevas = sembrar_estaciones_existentes()
     if nuevas:
         log.info("Estaciones sembradas desde el historico: %s", ", ".join(nuevas))

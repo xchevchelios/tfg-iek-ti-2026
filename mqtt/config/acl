@@ -1,7 +1,14 @@
 # --- USUARIO ADMIN / GATEWAY ESP32 ---
 user tfg_nodo
 topic readwrite estaciones/#
+# Configuracion de la red que la API publica y el gateway lee. Rama propia,
+# fuera de estaciones/, para no cruzarse con el comodin de la ingesta.
+topic readwrite gateway/#
 
 # --- USUARIO PÚBLICO / FRONTEND WEB ---
 user web_publico
 topic read estaciones/+/data
+
+# web_publico NO tiene ninguna regla sobre gateway/#: sus credenciales viajan
+# en el JavaScript del sitio, asi que cualquiera podria reconfigurar el gateway
+# si pudiera escribir ahi.
