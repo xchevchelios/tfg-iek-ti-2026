@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 import paho.mqtt.client as mqtt
 
 # --- Configuracion ---
-BROKER = "air-quality-campus-una.duckdns.org"
+BROKER = "mqtt.aire-campus-una.org"
 PUERTO = 8883
 USUARIO = "tfg_nodo"
 NODOS = [1, 2]        # ids de las estaciones ya registradas

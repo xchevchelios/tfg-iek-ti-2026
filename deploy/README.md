@@ -152,9 +152,33 @@ endpoint `/api/datos_recientes`, que existe solo para ese frontend.
 ## Verificacion
 
 ```bash
-curl -s https://air-quality-campus-una.duckdns.org/api/salud
-curl -s https://air-quality-campus-una.duckdns.org/api/estaciones
+curl -s https://api.aire-campus-una.org/api/salud
+curl -s https://api.aire-campus-una.org/api/estaciones
 ```
 
 `/api/salud` devuelve `{"estado":"ok","escrituras":true|false}`. Si `escrituras`
 es `false`, falta `API_TOKEN` en el `.env` del servidor.
+
+---
+
+## Nombres de dominio
+
+| Nombre | Apunta a | Modo en Cloudflare | Usa |
+|---|---|---|---|
+| `aire-campus-una.org` | Worker de Cloudflare | proxied | frontend |
+| `api.aire-campus-una.org` | CNAME al duckdns | DNS only | API y WebSocket del navegador |
+| `mqtt.aire-campus-una.org` | CNAME al duckdns | DNS only | MQTTS del gateway, puerto 8883 |
+| `air-quality-campus-una.duckdns.org` | la VM | — | DNS dinamico; sigue resolviendo y respondiendo |
+
+El duckdns no se retira: resuelve la IP de la VM, que puede cambiar, y los tres
+nombres de `aire-campus-una.org` son CNAME hacia el. El certificado de Let's
+Encrypt cubre los tres nombres del servidor en un unico linaje.
+
+El frontend y la API comparten dominio registrable, de modo que son *same-site*:
+es lo que permite que una cookie de sesion emitida por la API no sea tratada
+como cookie de terceros. Siguen siendo origenes distintos, asi que CORS continua
+aplicando y el `fetch` necesitara `credentials: 'include'` cuando se implemente
+la autenticacion por sesion.
+
+`mqtt.` tiene que quedar en DNS only: el 8883 es TCP crudo y Cloudflare no lo
+proxea en el plan gratuito.
