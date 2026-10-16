@@ -87,9 +87,40 @@ Campos que hay que completar si o si:
 - `DB_PATH`: ruta absoluta del `sensores.db` de produccion.
 - `MQTT_USER` / `MQTT_PASS`: credenciales del usuario `tfg_nodo` del broker.
 - `CORS_ORIGINS`: el dominio del frontend en Cloudflare.
-- `API_TOKEN`: si queda vacio, las escrituras de la pagina de gestion se
-  rechazan con 503. Es deliberado: el modo abierto tiene que ser una decision
-  explicita, no el estado por defecto.
+- `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`: credenciales del cliente OAuth.
+  Si quedan vacias, las escrituras del panel se rechazan con 503. Es
+  deliberado: el modo abierto tiene que ser una decision explicita, no el
+  estado por defecto.
+- `OAUTH_REDIRECT_URI`: tiene que coincidir **caracter por caracter** con la
+  URI autorizada en la consola de Google. Es la causa numero uno de que el
+  login falle con `redirect_uri_mismatch`.
+
+### 2b. Cliente OAuth en Google
+
+En <https://console.cloud.google.com/apis/credentials>, crear un *OAuth 2.0
+Client ID* de tipo *Web application*:
+
+| Campo | Valor |
+|---|---|
+| Authorized JavaScript origins | `https://aire-campus-una.org` |
+| Authorized redirect URIs | `https://api.aire-campus-una.org/api/auth/callback` |
+
+Mientras el proyecto este en modo prueba, hay que agregar como *test users* a
+las personas que van a entrar, o Google rechaza el acceso.
+
+### 2c. Primer usuario
+
+No hay registro publico. El primer admin se crea por consola:
+
+```bash
+cd ~/tfg-sistema/api
+source venv/bin/activate
+python3 crear_usuario.py tu-correo@gmail.com "Tu Nombre" admin
+```
+
+El correo tiene que ser el de la cuenta de Google con la que vas a entrar. No
+se guarda ninguna contrasena: la identidad la verifica Google, la autorizacion
+la decide esta tabla.
 
 ### 3. Esquema y migracion de la base
 
@@ -156,8 +187,16 @@ curl -s https://api.aire-campus-una.org/api/salud
 curl -s https://api.aire-campus-una.org/api/estaciones
 ```
 
-`/api/salud` devuelve `{"estado":"ok","escrituras":true|false}`. Si `escrituras`
-es `false`, falta `API_TOKEN` en el `.env` del servidor.
+`/api/salud` devuelve `{"estado":"ok","autenticacion":true|false}`. Si
+`autenticacion` es `false`, faltan las credenciales de Google en el `.env`.
+
+Para comprobar la sesion desde el navegador, con el panel abierto:
+
+```
+GET https://api.aire-campus-una.org/api/auth/sesion
+```
+
+Devuelve `{"autenticado":false}` sin sesion y los datos del usuario con ella.
 
 ---
 

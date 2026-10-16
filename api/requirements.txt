@@ -3,3 +3,4 @@ flask-cors
 gunicorn
 paho-mqtt
 python-dotenv
+requests

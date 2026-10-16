@@ -59,6 +59,67 @@ def init_db():
             ON mediciones (station_id, timestamp)
             """
         )
+
+        # --- Autenticacion y autorizacion ---
+
+        # El correo se compara sin distinguir mayusculas: Google puede devolver
+        # el mismo buzon escrito distinto y serian dos usuarios para la base.
+        # `sub_google` es el identificador estable que asigna Google; se completa
+        # en el primer login y a partir de ahi es la clave de busqueda, porque
+        # una persona puede cambiar de direccion de correo.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                nombre        TEXT NOT NULL,
+                rol           TEXT NOT NULL CHECK (rol IN ('admin', 'operador')),
+                activo        INTEGER NOT NULL DEFAULT 1,
+                sub_google    TEXT UNIQUE,
+                creado_en     TEXT NOT NULL,
+                ultimo_acceso TEXT
+            )
+            """
+        )
+
+        # De la sesion se guarda el HASH del token, nunca el token.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sesiones (
+                id               TEXT PRIMARY KEY,
+                usuario_id       INTEGER NOT NULL REFERENCES usuarios(id),
+                csrf             TEXT NOT NULL,
+                creada_en        TEXT NOT NULL,
+                expira_en        TEXT NOT NULL,
+                ultima_actividad TEXT NOT NULL,
+                ip               TEXT,
+                agente           TEXT
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sesiones_usuario ON sesiones (usuario_id)"
+        )
+
+        # El correo se duplica a proposito: la bitacora tiene que seguir siendo
+        # legible aunque el usuario se elimine de la tabla.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bitacora (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                momento    TEXT NOT NULL,
+                usuario_id INTEGER,
+                email      TEXT,
+                accion     TEXT NOT NULL,
+                entidad    TEXT,
+                detalle    TEXT
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_bitacora_momento ON bitacora (momento)"
+        )
+
         conn.commit()
 
 

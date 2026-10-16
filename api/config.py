@@ -32,11 +32,31 @@ MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estaciones/+/data")
 MQTT_USER = os.environ.get("MQTT_USER", "")
 MQTT_PASS = os.environ.get("MQTT_PASS", "")
 
-# --- API ---
-# Token para las operaciones de escritura (alta/edicion/baja de estaciones).
-# Si no esta definido, las escrituras quedan DESHABILITADAS. Es deliberado:
-# el modo inseguro tiene que ser una decision explicita, no el default.
-API_TOKEN = os.environ.get("API_TOKEN", "").strip()
+# --- Autenticacion con Google (OpenID Connect) ---
+# La identidad la verifica Google; la autorizacion es nuestra: solo entran los
+# correos dados de alta en la tabla `usuarios`. Sin esa lista, cualquier persona
+# con una cuenta de Google podria acceder al panel.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+
+# Tiene que coincidir EXACTAMENTE con la URI autorizada en la consola de Google.
+OAUTH_REDIRECT_URI = os.environ.get(
+    "OAUTH_REDIRECT_URI", "https://api.aire-campus-una.org/api/auth/callback"
+)
+
+# A donde se devuelve al navegador una vez resuelto el login.
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://aire-campus-una.org").rstrip("/")
+
+# Duracion de la sesion, con renovacion mientras se use.
+SESION_HORAS = int(os.environ.get("SESION_HORAS", "12"))
+
+# El navegador no guarda una cookie Secure sobre http://localhost, asi que en
+# desarrollo hay que poner COOKIE_SECURE=false. En produccion queda en true.
+COOKIE_SECURE = _bool("COOKIE_SECURE", True)
+
+
+def autenticacion_configurada():
+    return bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET)
 
 DEBUG = _bool("FLASK_DEBUG", False)
 

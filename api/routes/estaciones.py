@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 
 from db import get_connection
-from routes.auth import requiere_token
+from seguridad import registrar, requiere_rol
 
 bp = Blueprint("estaciones", __name__, url_prefix="/api/estaciones")
 
@@ -58,7 +58,7 @@ def listar():
 
 
 @bp.post("")
-@requiere_token
+@requiere_rol("admin", "operador")
 def crear():
     """Da de alta una estacion nueva."""
     datos = request.get_json(silent=True) or {}
@@ -103,11 +103,12 @@ def crear():
     except sqlite3.IntegrityError:
         return jsonify({"error": f"Ya existe una estacion con id '{station_id}'."}), 409
 
+    registrar("alta_estacion", station_id, nombre)
     return jsonify(_fila_a_dict(fila)), 201
 
 
 @bp.put("/<station_id>")
-@requiere_token
+@requiere_rol("admin", "operador")
 def actualizar(station_id):
     """Edita nombre, coordenadas o estado de una estacion. El id no se cambia."""
     datos = request.get_json(silent=True) or {}
@@ -156,11 +157,12 @@ def actualizar(station_id):
             "SELECT * FROM estaciones WHERE id = ?", (station_id,)
         ).fetchone()
 
+    registrar("edicion_estacion", station_id, nombre)
     return jsonify(_fila_a_dict(fila))
 
 
 @bp.delete("/<station_id>")
-@requiere_token
+@requiere_rol("admin", "operador")
 def dar_de_baja(station_id):
     """Baja logica: marca la estacion como inactiva.
 
@@ -177,4 +179,5 @@ def dar_de_baja(station_id):
         conn.execute("UPDATE estaciones SET activa = 0 WHERE id = ?", (station_id,))
         conn.commit()
 
+    registrar("baja_estacion", station_id)
     return jsonify({"id": station_id, "activa": False})

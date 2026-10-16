@@ -1,8 +1,8 @@
 """Fabrica de la aplicacion Flask.
 
-La API sirve unicamente datos: el frontend es estatico y se sirve desde un CDN
-(Cloudflare), en otro origen. Por eso CORS se configura de forma explicita, con
-una lista blanca de origenes y nunca con '*'.
+La API sirve unicamente datos: el frontend es estatico y se sirve desde un CDN,
+en otro origen pero bajo el mismo dominio registrable. Esa condicion es la que
+permite que la cookie de sesion no sea tratada como cookie de terceros.
 """
 import logging
 
@@ -11,8 +11,11 @@ from flask_cors import CORS
 
 import config
 from db import init_db
+from routes.auth import bp as bp_auth
 from routes.estaciones import bp as bp_estaciones
 from routes.mediciones import bp as bp_mediciones
+from routes.usuarios import bp as bp_usuarios
+from seguridad import cargar_sesion
 
 
 def create_app():
@@ -27,12 +30,21 @@ def create_app():
     CORS(
         app,
         resources={r"/api/*": {"origins": config.origenes_cors()}},
-        allow_headers=["Content-Type", "X-API-Token"],
+        allow_headers=["Content-Type", "X-CSRF-Token"],
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        # Sin esto el navegador no adjunta la cookie de sesion en peticiones
+        # cross-origin, aunque sean del mismo sitio.
+        supports_credentials=True,
     )
 
     init_db()
 
+    # La sesion se resuelve una vez por peticion y queda en `g`, para que los
+    # decoradores y la bitacora no tengan que volver a consultarla.
+    app.before_request(cargar_sesion)
+
+    app.register_blueprint(bp_auth)
+    app.register_blueprint(bp_usuarios)
     app.register_blueprint(bp_estaciones)
     app.register_blueprint(bp_mediciones)
 
@@ -46,7 +58,11 @@ def create_app():
                 conn.execute("SELECT 1").fetchone()
         except Exception as exc:  # noqa: BLE001 - se reporta tal cual
             return jsonify({"estado": "error", "detalle": str(exc)}), 503
-        return jsonify({"estado": "ok", "escrituras": bool(config.API_TOKEN)})
+
+        return jsonify({
+            "estado": "ok",
+            "autenticacion": config.autenticacion_configurada(),
+        })
 
     @app.errorhandler(404)
     def no_encontrado(_error):
