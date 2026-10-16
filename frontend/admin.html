@@ -10,83 +10,141 @@
 <body>
   <div class="container">
     <header class="encabezado">
-      <h1 class="titulo">Gestión de nodos</h1>
+      <h1 class="titulo">Administración</h1>
       <div class="encabezado__barra">
         <a class="enlace-nav" href="/">← Volver al dashboard</a>
+        <div id="barra-sesion" class="barra-sesion" hidden>
+          <span id="sesion-usuario" class="sesion-usuario"></span>
+          <button type="button" id="btn-salir">Salir</button>
+        </div>
       </div>
     </header>
 
-    <section class="panel">
-      <h2 class="panel__titulo">Acceso de administración</h2>
+    <!-- Estado sin sesión -->
+    <section id="pantalla-acceso" class="panel panel--acceso" hidden>
+      <h2 class="panel__titulo">Acceso restringido</h2>
       <p class="nota">
-        Las operaciones de escritura requieren el token configurado en el
-        servidor. Se guarda solo en esta pestaña del navegador y se pierde al
-        cerrarla: no queda incluido en el sitio publicado.
+        La gestión de la red requiere una cuenta autorizada. La identidad la
+        verifica Google; los permisos los otorga un administrador del sistema.
       </p>
-      <form id="form-token" class="formulario formulario--linea">
-        <label for="token">Token</label>
-        <input type="password" id="token" name="token" autocomplete="off" placeholder="Pegar el token">
-        <button type="submit">Guardar</button>
-        <button type="button" id="btn-olvidar-token" hidden>Olvidar</button>
-        <span id="estado-token" class="estado-token"></span>
-      </form>
-    </section>
-
-    <section class="panel">
-      <h2 class="panel__titulo">Nueva estación</h2>
-      <form id="form-alta" class="formulario formulario--grilla">
-        <div class="campo-grupo">
-          <label for="alta-id">Identificador</label>
-          <input id="alta-id" name="id" required pattern="[a-z0-9_]{3,32}"
-                 placeholder="estacion_03" title="Minúsculas, dígitos y guion bajo (3 a 32 caracteres)">
-        </div>
-        <div class="campo-grupo">
-          <label for="alta-nombre">Nombre</label>
-          <input id="alta-nombre" name="nombre" required placeholder="Estación 3 — Bloque C">
-        </div>
-        <div class="campo-grupo">
-          <label for="alta-lat">Latitud</label>
-          <input id="alta-lat" name="latitud" type="number" step="any" placeholder="-25.3345">
-        </div>
-        <div class="campo-grupo">
-          <label for="alta-lon">Longitud</label>
-          <input id="alta-lon" name="longitud" type="number" step="any" placeholder="-57.5150">
-        </div>
-        <div class="campo-grupo campo-grupo--accion">
-          <button type="submit">Dar de alta</button>
-        </div>
-      </form>
+      <p id="mensaje-acceso" class="aviso-acceso" hidden></p>
+      <button type="button" id="btn-entrar" class="btn-google">Entrar con Google</button>
       <p class="nota">
-        El identificador debe coincidir exactamente con el que el nodo usa en su
-        topic MQTT (<code>estaciones/&lt;identificador&gt;/data</code>). Las
-        coordenadas son opcionales: sin ellas la estación funciona igual, pero no
-        aparece en el mapa.
+        El dashboard público no requiere acceso:
+        <a class="enlace-nav" href="/">ver las mediciones</a>.
       </p>
     </section>
 
-    <section class="panel">
-      <h2 class="panel__titulo">Estaciones registradas</h2>
-      <div class="tabla-scroll">
-        <table class="tabla">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Latitud</th>
-              <th>Longitud</th>
-              <th>Estado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="tabla-estaciones"></tbody>
-        </table>
-      </div>
-      <p id="estado-tabla" class="nota" hidden></p>
-      <p class="nota">
-        La baja es lógica: la estación deja de aparecer en el dashboard, pero sus
-        mediciones históricas se conservan y siguen siendo consultables.
-      </p>
-    </section>
+    <!-- Estado con sesión -->
+    <div id="panel" hidden>
+      <section class="panel">
+        <h2 class="panel__titulo">Nueva estación</h2>
+        <form id="form-alta" class="formulario formulario--grilla">
+          <div class="campo-grupo">
+            <label for="alta-id">Identificador</label>
+            <input id="alta-id" name="id" required pattern="[a-z0-9_]{3,32}"
+                   placeholder="estacion_03" title="Minúsculas, dígitos y guion bajo (3 a 32 caracteres)">
+          </div>
+          <div class="campo-grupo">
+            <label for="alta-nombre">Nombre</label>
+            <input id="alta-nombre" name="nombre" required placeholder="Estación 3 — Bloque C">
+          </div>
+          <div class="campo-grupo">
+            <label for="alta-lat">Latitud</label>
+            <input id="alta-lat" name="latitud" type="number" step="any" placeholder="-25.3345">
+          </div>
+          <div class="campo-grupo">
+            <label for="alta-lon">Longitud</label>
+            <input id="alta-lon" name="longitud" type="number" step="any" placeholder="-57.5150">
+          </div>
+          <div class="campo-grupo campo-grupo--accion">
+            <button type="submit">Dar de alta</button>
+          </div>
+        </form>
+        <p class="nota">
+          El identificador debe coincidir exactamente con el que el nodo usa en su
+          topic MQTT (<code>estaciones/&lt;identificador&gt;/data</code>). Las
+          coordenadas son opcionales: sin ellas la estación funciona igual, pero no
+          aparece en el mapa.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel__titulo">Estaciones registradas</h2>
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>ID</th><th>Nombre</th><th>Latitud</th><th>Longitud</th>
+                <th>Estado</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-estaciones"></tbody>
+          </table>
+        </div>
+        <p id="estado-tabla" class="nota" hidden></p>
+        <p class="nota">
+          La baja es lógica: la estación deja de aparecer en el dashboard, pero sus
+          mediciones históricas se conservan y siguen siendo consultables.
+        </p>
+      </section>
+
+      <!-- Solo para el rol admin -->
+      <section id="seccion-usuarios" class="panel" hidden>
+        <h2 class="panel__titulo">Usuarios</h2>
+        <form id="form-usuario" class="formulario formulario--grilla">
+          <div class="campo-grupo">
+            <label for="usuario-email">Correo de Google</label>
+            <input id="usuario-email" name="email" type="email" required placeholder="persona@gmail.com">
+          </div>
+          <div class="campo-grupo">
+            <label for="usuario-nombre">Nombre</label>
+            <input id="usuario-nombre" name="nombre" required placeholder="Nombre Apellido">
+          </div>
+          <div class="campo-grupo">
+            <label for="usuario-rol">Rol</label>
+            <select id="usuario-rol" name="rol">
+              <option value="operador">Operador</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <div class="campo-grupo campo-grupo--accion">
+            <button type="submit">Habilitar</button>
+          </div>
+        </form>
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>Correo</th><th>Nombre</th><th>Rol</th>
+                <th>Estado</th><th>Último acceso</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-usuarios"></tbody>
+          </table>
+        </div>
+        <p id="estado-usuarios" class="nota" hidden></p>
+        <p class="nota">
+          No existe registro público: una persona solo entra si su correo está en
+          esta lista. <strong>Operador</strong> administra estaciones;
+          <strong>administrador</strong> además gestiona usuarios. Una baja o un
+          cambio de rol cortan la sesión abierta en el acto.
+        </p>
+      </section>
+
+      <section id="seccion-bitacora" class="panel" hidden>
+        <h2 class="panel__titulo">Últimas acciones</h2>
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr><th>Momento</th><th>Usuario</th><th>Acción</th><th>Detalle</th></tr>
+            </thead>
+            <tbody id="tabla-bitacora"></tbody>
+          </table>
+        </div>
+        <p id="estado-bitacora" class="nota" hidden></p>
+      </section>
+    </div>
   </div>
 
   <script type="module" src="/src/pages/admin.js"></script>

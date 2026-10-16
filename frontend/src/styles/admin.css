@@ -48,3 +48,64 @@
 
 .fila--inactiva { opacity: 0.55; }
 .fila--inactiva .celda-estado { font-style: italic; }
+
+/* --- Pantalla de acceso --- */
+
+.panel--acceso {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.panel--acceso .nota { margin: 0; }
+
+.aviso-acceso {
+  margin: 0;
+  padding: 12px 16px;
+  width: 100%;
+  border-radius: 8px;
+  border-left: 3px solid var(--rojo);
+  background: var(--superficie-tenue);
+  color: var(--texto);
+  font-size: 0.92em;
+}
+
+/* El botón de Google sigue el estilo del sistema, no el de la marca: no es un
+   widget oficial de Google, es un enlace al flujo de autorización. */
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 20px;
+  font-size: 1em;
+  background: var(--azul);
+  border-color: var(--azul);
+  color: #fff;
+}
+.btn-google:hover:not(:disabled) { background: var(--azul-oscuro); }
+.btn-google::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  flex: none;
+  background: #fff;
+  border-radius: 50%;
+  /* Disco con una G: marca de dónde viene la identidad sin usar el logotipo. */
+  mask: radial-gradient(circle at center, transparent 0 32%, #000 33%);
+  -webkit-mask: radial-gradient(circle at center, transparent 0 32%, #000 33%);
+}
+
+/* --- Tabla de usuarios --- */
+
+.celda-correo { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 0.92em; }
+.celda-fecha { white-space: nowrap; font-size: 0.9em; color: var(--texto-tenue); }
+
+.fila--propia { background: var(--superficie-tenue); }
+.fila--propia .celda-correo::after {
+  content: ' (vos)';
+  font-family: var(--sans, inherit);
+  color: var(--texto-tenue);
+}
+
+#tabla-bitacora td { font-size: 0.9em; }

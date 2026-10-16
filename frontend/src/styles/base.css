@@ -18,6 +18,11 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* El atributo hidden tiene que ganarle al display de cualquier componente.
+   Sin esto, una regla como .barra-sesion { display: flex } lo anula en
+   silencio y el elemento sigue visible aunque este marcado como oculto. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   padding: 10px 0 50px;
@@ -152,7 +157,7 @@ button:hover { background: #e2e6ea; transform: translateY(-1px); }
 button[type="submit"] { background: var(--azul); border-color: var(--azul); color: #fff; }
 button[type="submit"]:hover { background: var(--azul-oscuro); }
 
-input {
+input, select {
   font: inherit;
   padding: 8px 12px;
   border: 1px solid #ced4da;
@@ -160,7 +165,8 @@ input {
   background: #fff;
   color: var(--texto);
 }
-input:focus-visible, button:focus-visible, a:focus-visible, canvas:focus-visible {
+input:focus-visible, select:focus-visible, button:focus-visible,
+a:focus-visible, canvas:focus-visible {
   outline: 2px solid var(--azul);
   outline-offset: 2px;
 }
@@ -275,4 +281,36 @@ input:focus-visible, button:focus-visible, a:focus-visible, canvas:focus-visible
 @media (max-width: 768px) {
   .modal-caja { width: 95%; padding: 20px; max-height: 92vh; }
   .modal-grafico { height: 320px; }
+}
+
+/* --- Sesion abierta --- */
+
+.barra-sesion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sesion-usuario {
+  font-size: 0.9em;
+  color: var(--texto-tenue);
+}
+.sesion-usuario::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--verde);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button:disabled:hover {
+  background: var(--superficie-tenue);
+  transform: none;
 }

@@ -1,12 +1,10 @@
 /**
  * Cliente HTTP de la API.
  *
- * Centraliza la URL base, el manejo de errores y el token de escritura, para
+ * Centraliza la URL base, el envio de la cookie de sesion y el token CSRF, para
  * que ningun modulo de interfaz tenga que saber como se arma una peticion.
  */
 import { API_BASE_URL } from '../config.js';
-
-const CLAVE_TOKEN = 'tfg_api_token';
 
 /** Error con el codigo HTTP, para que quien llame pueda distinguir 401 de 500. */
 export class ErrorApi extends Error {
@@ -18,21 +16,17 @@ export class ErrorApi extends Error {
 }
 
 /**
- * El token de administracion NO se compila en el bundle: lo escribe la persona
- * en la pagina de gestion y vive solo en sessionStorage, es decir mientras dure
- * la pestania. Un sitio estatico no puede guardar secretos, asi que el secreto
- * lo aporta quien opera.
+ * Token CSRF de la sesion actual.
+ *
+ * No se guarda en localStorage ni en una cookie: vive en memoria mientras dure
+ * la pagina. Lo entrega /api/auth/sesion y se reenvia en cada escritura. Un
+ * sitio de otro origen no puede leerlo, porque CORS le impide leer esa
+ * respuesta, ni fijar la cabecera sin un preflight que la allowlist rechaza.
  */
-export function guardarToken(token) {
-  sessionStorage.setItem(CLAVE_TOKEN, token);
-}
+let csrf = '';
 
-export function leerToken() {
-  return sessionStorage.getItem(CLAVE_TOKEN) ?? '';
-}
-
-export function olvidarToken() {
-  sessionStorage.removeItem(CLAVE_TOKEN);
+export function fijarCsrf(valor) {
+  csrf = valor ?? '';
 }
 
 async function pedir(ruta, opciones = {}) {
@@ -43,16 +37,22 @@ async function pedir(ruta, opciones = {}) {
     cabeceras['Content-Type'] = 'application/json';
   }
   if (autenticado) {
-    cabeceras['X-API-Token'] = leerToken();
+    cabeceras['X-CSRF-Token'] = csrf;
   }
 
   let respuesta;
   try {
-    respuesta = await fetch(`${API_BASE_URL}${ruta}`, { ...resto, headers: cabeceras });
+    respuesta = await fetch(`${API_BASE_URL}${ruta}`, {
+      ...resto,
+      headers: cabeceras,
+      // La cookie de sesion no viaja sin esto, aunque el frontend y la API
+      // compartan dominio registrable: la peticion sigue siendo cross-origin.
+      credentials: 'include',
+    });
   } catch (causa) {
     // fetch solo rechaza por fallo de red, DNS, TLS o CORS: nunca por un
     // codigo de estado. Vale la pena distinguirlo para el mensaje al usuario.
-    throw new ErrorApi('No se pudo contactar al servidor. Verifique la conexion.', 0, {
+    throw new ErrorApi('No se pudo contactar al servidor. Verificá la conexión.', 0, {
       cause: causa,
     });
   }
