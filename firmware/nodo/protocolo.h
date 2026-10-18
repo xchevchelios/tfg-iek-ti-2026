@@ -24,6 +24,7 @@
 #define PROTOCOLO_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 const uint8_t MAGIA_GATEWAY = 0xA5;
 const uint8_t MAGIA_NODO    = 0x5A;
@@ -81,6 +82,28 @@ inline bool respuestaValida(const Respuesta& r) {
 inline uint16_t siguienteRonda(uint16_t ronda) {
   uint16_t s = ronda + 1;
   return s == RONDA_NINGUNA ? 1 : s;
+}
+
+// ---- Texto para el monitor serie (el mismo formato en gateway y nodos) ----
+
+// "Estacion_01"
+inline void nombreEstacion(char* buf, size_t largo, uint8_t direccion) {
+  snprintf(buf, largo, "Estacion_%02u", (unsigned)direccion);
+}
+
+// "<pm2.5 | pm10 | temperatura | humedad>", con "--" en lo que no midio.
+inline void textoValores(char* buf, size_t largo, uint8_t estado,
+                         float pm25, float pm10, float temperatura, float humedad) {
+  char a[12] = "--", b[12] = "--", c[12] = "--", d[12] = "--";
+  if (estado & ESTADO_PM_OK) {
+    snprintf(a, sizeof(a), "%.1f", pm25);
+    snprintf(b, sizeof(b), "%.1f", pm10);
+  }
+  if (estado & ESTADO_TH_OK) {
+    snprintf(c, sizeof(c), "%.1f", temperatura);
+    snprintf(d, sizeof(d), "%.1f", humedad);
+  }
+  snprintf(buf, largo, "<%s | %s | %s | %s>", a, b, c, d);
 }
 
 #endif

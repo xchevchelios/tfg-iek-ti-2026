@@ -161,7 +161,23 @@ int main() {
   for (size_t i = antes; i < mqtt.publicadas.size(); i++)
     if (mqtt.publicadas[i].topic.rfind("estaciones/estacion_", 0) == 0) mediciones++;
   CHECK(mediciones == 0, "no publica mediciones");
-  CHECK(Serial.salida.find("publicacion desactivada") != std::string::npos, "pero las muestra por el monitor serie");
+  CHECK(Serial.salida.find("Publicación desactivada") != std::string::npos, "pero las muestra por el monitor serie");
+
+  printf("11. Monitor serie: formato corto y aviso de nodo que no responde\n");
+  entregarMqtt(TOPIC_CONFIG_PARAMETROS, "{\"publicar\":true}");
+  estados.erase(2);
+  Serial.salida.clear();
+  correr(120000);
+  CHECK(Serial.salida.find("[LoRa TX] Estacion_01\n") != std::string::npos, "pedido a Estacion_01");
+  CHECK(Serial.salida.find("[LoRa RX] Mensaje recibido Estacion_01 <12.3 | 20.0 | 25.1 | 61.0>") != std::string::npos,
+        "respuesta con los cuatro valores");
+  CHECK(Serial.salida.find("[MQTT] Estacion_01 publicado al broker") != std::string::npos, "publicacion confirmada");
+  CHECK(Serial.salida.find("[LoRa] Estacion_02 no respondió") != std::string::npos, "aviso de nodo sin respuesta");
+  CHECK(Serial.salida.find("RONDA") == std::string::npos && Serial.salida.find("ronda") == std::string::npos,
+        "sin numeros de ronda en el monitor");
+  printf("   --- salida de una ronda ---\n");
+  size_t desde = Serial.salida.rfind("\n[LoRa TX] Orden");
+  printf("%s", Serial.salida.substr(desde == std::string::npos ? 0 : desde + 1).c_str());
 
   printf("\n%d chequeos, %d fallas\n", chequeos, fallas);
   return fallas ? 1 : 0;

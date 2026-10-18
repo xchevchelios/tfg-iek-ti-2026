@@ -92,8 +92,6 @@ void TareaSensores(void*) {
       hubLecturaSDS = false;
       reintentado = false;
       ultimoDHT = ahora;
-      Serial.printf("[MEDICION] Ronda %u: SDS011 despierto, ventana de %u s\n",
-                    orden.ronda, orden.estabilizacion_s);
     }
 
     if (ventana.activa()) {
@@ -105,7 +103,7 @@ void TareaSensores(void*) {
                  ventana.transcurrido(ahora) > REINTENTO_DESPERTAR_MS) {
         sds.wakeup();
         reintentado = true;
-        Serial.println("[MEDICION] El SDS011 no responde: reenvio la orden de despertar.");
+        Serial.println("[SDS011] No responde, reintento");
       }
 
       if (ventana.enTramoDePromedio(ahora) && ahora - ultimoDHT >= INTERVALO_DHT_MS) {
@@ -124,11 +122,11 @@ void TareaSensores(void*) {
         errorSDS = !(r.estado & ESTADO_PM_OK);
         errorDHT = !(r.estado & ESTADO_TH_OK);
 
-        Serial.printf("[MEDICION] Ronda %u cerrada: PM2.5 %.1f | PM10 %.1f (%u lecturas) | "
-                      "%.1f C | %.1f %% | SDS011 dormido\n",
-                      r.ronda, r.pm25, r.pm10, r.muestras_pm, r.temperatura, r.humedad);
-        if (errorSDS) Serial.println("[-] El SDS011 no entrego lecturas en esta ventana.");
-        if (errorDHT) Serial.println("[-] El DHT21 no respondio: revisar pull-up o cableado.");
+        char valores[64];
+        textoValores(valores, sizeof(valores), r.estado, r.pm25, r.pm10, r.temperatura, r.humedad);
+        Serial.printf("[Sensores] Medición lista %s\n", valores);
+        if (errorSDS) Serial.println("[SDS011] Sin lecturas");
+        if (errorDHT) Serial.println("[DHT21] Sin lecturas, revisar cableado");
       }
     }
 
@@ -153,11 +151,11 @@ void responder() {
   resp.temperatura = r.temperatura;
   resp.humedad     = r.humedad;
   Serial2.write((const uint8_t*)&resp, sizeof(resp));
-
-  Serial.printf("[LORA TX] Respuesta con la medicion de la ronda %u\n", r.ronda);
+  Serial.println("[LoRa TX] Datos enviados al gateway");
 }
 
 void atenderComando(const Comando& c) {
+  static uint16_t rondaAnunciada = RONDA_NINGUNA;
   if (!comandoValido(c)) return;
 
   if (c.tipo == CMD_MEDIR) {
@@ -165,9 +163,13 @@ void atenderComando(const Comando& c) {
     if (c.periodo_s > 0) periodoMs = (uint32_t)c.periodo_s * 1000UL;
     OrdenMedir orden = {c.ronda, c.estabilizacion_s};
     xQueueOverwrite(buzonOrden, &orden);
-    Serial.printf("\n[LORA RX] Orden MEDIR, ronda %u\n", c.ronda);
+    // La orden llega dos veces por ronda; se anuncia una sola.
+    if (c.ronda != rondaAnunciada) {
+      rondaAnunciada = c.ronda;
+      Serial.printf("\n[LoRa RX] Orden de medir (%u s)\n", c.estabilizacion_s);
+    }
   } else if (c.tipo == CMD_ENVIAR && c.destino == ID_NODO) {
-    Serial.printf("[LORA RX] Orden ENVIAR, ronda %u\n", c.ronda);
+    Serial.println("[LoRa RX] Pedido de datos");
     responder();
   }
 }
@@ -191,9 +193,12 @@ void parpadear(uint8_t veces, uint16_t encendido_ms, uint16_t pausa_final_ms) {
 
 void TareaLED(void*) {
   pinMode(LED_PIN, OUTPUT);
+  bool avisado = false;
   for (;;) {
     // Sin ordenes durante dos periodos y medio: el nodo quedo fuera de la red.
     bool sinOrdenes = millis() - ultimaOrden > 2 * periodoMs + 30000UL;
+    if (sinOrdenes && !avisado) Serial.println("[LoRa] Sin órdenes del gateway");
+    avisado = sinOrdenes;
     if (midiendo) {
       digitalWrite(LED_PIN, HIGH);
       vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -232,9 +237,9 @@ void setup() {
   buzonOrden = xQueueCreate(1, sizeof(OrdenMedir));
   ultimaOrden = millis();
 
-  Serial.println("\n=================================================");
-  Serial.printf(" NODO %02u — protocolo LoRa v2 (SDS011 dormido)\n", ID_NODO);
-  Serial.println("=================================================");
+  char nombre[16];
+  nombreEstacion(nombre, sizeof(nombre), ID_NODO);
+  Serial.printf("\n[NODO] %s | protocolo v2 | SDS011 dormido hasta la orden de medir\n", nombre);
 
   xTaskCreatePinnedToCore(TareaSensores, "sensores", 8192, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore(TareaLED, "led", 2048, NULL, 1, NULL, 1);

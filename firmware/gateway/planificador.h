@@ -81,7 +81,7 @@ inline uint32_t duracionMaximaRonda_ms(const ParametrosRed& p, unsigned n) {
          (uint32_t)n * ((uint32_t)p.timeout_ms + PAUSA_ENTRE_NODOS_MS);
 }
 
-enum Accion    : uint8_t { NADA, DIFUNDIR_MEDIR, PEDIR_DATO, RONDA_TERMINADA };
+enum Accion    : uint8_t { NADA, DIFUNDIR_MEDIR, PEDIR_DATO, NODO_SIN_RESPUESTA, RONDA_TERMINADA };
 enum Desenlace : uint8_t { PENDIENTE, FRESCA, VIEJA, SIN_RESPUESTA };
 enum Recepcion : uint8_t { IGNORADA, ACEPTADA_FRESCA, ACEPTADA_VIEJA };
 
@@ -89,7 +89,7 @@ class Planificador {
  public:
   Planificador()
       : estado_(ESPERA), ronda_(RONDA_NINGUNA), n_(0), idx_(0), pendiente_(false),
-        n_pend_(0), proxInicio_(0), duracion_(0), excedida_(false) {
+        n_pend_(0), perdido_(0), proxInicio_(0), duracion_(0), excedida_(false) {
     params_ = params_pend_ = PARAMETROS_POR_DEFECTO;
   }
 
@@ -151,9 +151,10 @@ class Planificador {
 
       case PIDIENDO:
         if (ahora - tPedido_ < params_.timeout_ms) return NADA;
+        perdido_ = nodos_[idx_];
         desenlace_[idx_] = SIN_RESPUESTA;
         avanzar(ahora);
-        return NADA;
+        return NODO_SIN_RESPUESTA;
 
       case PAUSA:
         if (ahora - tPausa_ < PAUSA_ENTRE_NODOS_MS) return NADA;
@@ -190,6 +191,7 @@ class Planificador {
 
   uint16_t ronda() const { return ronda_; }
   uint8_t nodoActual() const { return nodos_[idx_]; }
+  uint8_t nodoPerdido() const { return perdido_; }   // tras NODO_SIN_RESPUESTA
   const ParametrosRed& parametros() const { return params_; }
   uint8_t cantidadNodos() const { return n_; }
   uint8_t nodo(uint8_t i) const { return nodos_[i]; }
@@ -218,6 +220,7 @@ class Planificador {
   uint8_t       n_, idx_;
   bool          pendiente_;
   uint8_t       n_pend_;
+  uint8_t       perdido_;
   Desenlace     desenlace_[MAX_NODOS];
   uint8_t       sensores_[MAX_NODOS];
   bool          repetido_;

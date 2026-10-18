@@ -233,17 +233,16 @@ void procesarNodos(JsonDocument& doc) {
   if (motivo) { rechazoNodos = motivo; return; }
   rechazoNodos = nullptr;
 
-  if (n == configDeseada.n && memcmp(tmp, configDeseada.nodos, n) == 0) {
-    // El broker reenvia el mensaje retenido en cada reconexion: si no
-    // cambio nada, no se reescribe la flash.
-    Serial.println("[CONFIG] Lista de nodos sin cambios.");
-    return;
-  }
+  // El broker reenvia el mensaje retenido en cada reconexion: si no cambio
+  // nada, no se reescribe la flash.
+  if (n == configDeseada.n && memcmp(tmp, configDeseada.nodos, n) == 0) return;
   configDeseada.n = n;
   memcpy(configDeseada.nodos, tmp, n);
   guardarNodos(configDeseada);
   enviarConfigAlRadio();
-  Serial.printf("[CONFIG] Lista de nodos nueva (%u): se aplica en la proxima ronda.\n", n);
+  Serial.print("[CONFIG] Nodos:");
+  for (unsigned i = 0; i < n; i++) Serial.printf(" %u", (unsigned)tmp[i]);
+  Serial.println(n ? " (desde la próxima ronda)" : " ninguno");
 }
 
 // false si la clave esta pero no es un entero entre 0 y `maximo`. Si no
@@ -276,16 +275,13 @@ void procesarParametros(JsonDocument& doc) {
   if (motivo) { rechazoParametros = motivo; return; }
   rechazoParametros = nullptr;
 
-  if (parametrosIguales(p, configDeseada.params)) {
-    Serial.println("[CONFIG] Parametros sin cambios.");
-    return;
-  }
+  if (parametrosIguales(p, configDeseada.params)) return;
   configDeseada.params = p;
   guardarParametros(configDeseada);
   enviarConfigAlRadio();
-  Serial.printf("[CONFIG] Parametros nuevos: periodo %u s, ventana %u s, timeout %u ms, "
-                "publicar %s. Se aplican en la proxima ronda.\n",
-                p.periodo_s, p.estabilizacion_s, p.timeout_ms, p.publicar ? "si" : "no");
+  Serial.printf("[CONFIG] Período %u s | ventana %u s | timeout %u ms | publicar %s "
+                "(desde la próxima ronda)\n",
+                p.periodo_s, p.estabilizacion_s, p.timeout_ms, p.publicar ? "sí" : "no");
 }
 
 void alRecibirMqtt(char* topic, uint8_t* carga, unsigned int largo) {
@@ -305,8 +301,8 @@ void alRecibirMqtt(char* topic, uint8_t* carga, unsigned int largo) {
     procesarParametros(doc);
   }
 
-  if (esNodos && rechazoNodos) Serial.printf("[-] Lista de nodos rechazada: %s\n", rechazoNodos);
-  if (esParametros && rechazoParametros) Serial.printf("[-] Parametros rechazados: %s\n", rechazoParametros);
+  if (esNodos && rechazoNodos) Serial.printf("[CONFIG] Lista de nodos rechazada: %s\n", rechazoNodos);
+  if (esParametros && rechazoParametros) Serial.printf("[CONFIG] Parámetros rechazados: %s\n", rechazoParametros);
   publicarAplicado();   // para que el rechazo se vea enseguida
 }
 
@@ -342,10 +338,12 @@ void publicarMedicion(const Medicion& m) {
   // publish(topic, json, n): como json es char* y no uint8_t*, el
   // compilador elegia publish(topic, payload, retained) con retained = n,
   // y cada medicion quedaba retenida en el broker.
+  char nombre[16];
+  nombreEstacion(nombre, sizeof(nombre), m.id_nodo);
   if (mqtt.publish(topic, (const uint8_t*)json, n, false)) {
-    Serial.printf("[CLOUD] %s %s\n", topic, json);
+    Serial.printf("[MQTT] %s publicado al broker\n", nombre);
   } else {
-    Serial.printf("[-] No se pudo publicar en %s\n", topic);
+    Serial.printf("[MQTT] %s no se pudo enviar al broker\n", nombre);
   }
 }
 
@@ -378,7 +376,7 @@ void mantenerConexion() {
       publicarAplicado();
       Serial.println("[MQTT] Conectado y suscripto a la configuracion.");
     } else {
-      Serial.printf("[-] Fallo MQTT, rc=%d. Reintento en 5 s.\n", mqtt.state());
+      Serial.printf("[MQTT] Fallo de conexión (rc=%d), reintento en 5 s.\n", mqtt.state());
       vTaskDelay(5000 / portTICK_PERIOD_MS);
       return;
     }
@@ -434,15 +432,16 @@ void difundirMedir() {
     // la ventana, que es el momento que representan.
     rondaMarcada = planificador.ronda();
     marcaRondaMs = millis() + (uint32_t)p.estabilizacion_s * 1000UL;
-    Serial.printf("\n[RONDA %u] MEDIR a %u nodos, ventana de %u s\n",
-                  planificador.ronda(), planificador.cantidadNodos(), p.estabilizacion_s);
+    Serial.printf("\n[LoRa TX] Orden de medir a todas las estaciones (%u s)\n", p.estabilizacion_s);
   }
 }
 
 void pedirDato() {
   Comando c = {MAGIA_GATEWAY, CMD_ENVIAR, planificador.nodoActual(), planificador.ronda(), 0, 0};
   enviar(c);
-  Serial.printf("[LORA TX] ENVIAR al nodo %02u\n", (unsigned)c.destino);
+  char nombre[16];
+  nombreEstacion(nombre, sizeof(nombre), c.destino);
+  Serial.printf("[LoRa TX] %s\n", nombre);
 }
 
 void encolar(const Medicion& m) {
@@ -458,22 +457,23 @@ void atenderRespuesta(const Respuesta& r) {
   Recepcion rec = planificador.recibir(r, millis());
   if (rec == IGNORADA) return;
 
+  char nombre[16];
+  nombreEstacion(nombre, sizeof(nombre), r.id_nodo);
   if (rec == ACEPTADA_VIEJA) {
-    Serial.printf("[LORA RX] Nodo %02u respondio con la ronda %u: no escucho la orden "
-                  "de medir. Se descarta.\n", (unsigned)r.id_nodo, r.ronda);
+    // Respondio con una medicion de otra ronda: no escucho la orden de medir.
+    Serial.printf("[LoRa RX] %s sin medición nueva\n", nombre);
     return;
   }
-  Serial.printf("[LORA RX] Nodo %02u | PM2.5 %.1f | PM10 %.1f (%u lecturas) | %.1f C | %.1f %%\n",
-                (unsigned)r.id_nodo, r.pm25, r.pm10, r.muestras_pm, r.temperatura, r.humedad);
+  char valores[64];
+  textoValores(valores, sizeof(valores), r.estado, r.pm25, r.pm10, r.temperatura, r.humedad);
+  Serial.printf("[LoRa RX] Mensaje recibido %s %s\n", nombre, valores);
 
-  if (!(r.estado & (ESTADO_PM_OK | ESTADO_TH_OK))) {
-    Serial.printf("[-] Nodo %02u: ningun sensor entrego datos.\n", (unsigned)r.id_nodo);
-    return;
-  }
+  if (!(r.estado & (ESTADO_PM_OK | ESTADO_TH_OK))) return;   // nada que publicar
   if (!planificador.parametros().publicar) {
-    Serial.println("    (publicacion desactivada: solo monitor serie)");
+    Serial.println("[MQTT] Publicación desactivada");
     return;
   }
+  if (!redOk) Serial.printf("[MQTT] Sin conexión: %s queda en espera\n", nombre);
   Medicion m = {r.id_nodo, r.estado, marcaRondaMs, r.pm25, r.pm10, r.temperatura, r.humedad};
   encolar(m);
 }
@@ -498,16 +498,16 @@ void cerrarRonda() {
   xQueueOverwrite(buzonResumen, &res);
 
   rondaSinDatos = res.config.n > 0 && frescas == 0;
-  Serial.printf("[RONDA %u] Cerrada en %.1f s: %u frescas, %u viejas, %u sin respuesta%s\n",
-                res.ronda, res.duracion_ms / 1000.0, frescas, viejas, sinRespuesta,
-                res.excedida ? " — EXCEDIO EL PERIODO" : "");
+  (void)viejas;
+  (void)sinRespuesta;
+  if (res.excedida)
+    Serial.printf("[LoRa] La ronda superó el período de %u s\n", res.config.params.periodo_s);
 }
 
 void loop() {
   ConfigRed nueva;
   if (xQueueReceive(buzonConfig, &nueva, 0) == pdPASS) {
     planificador.configurar(nueva.params, nueva.nodos, nueva.n);
-    Serial.println("[RADIO] Configuracion nueva: se aplica al empezar la proxima ronda.");
   }
 
   while (Serial2.available()) {
@@ -520,6 +520,12 @@ void loop() {
   switch (planificador.tick(millis())) {
     case DIFUNDIR_MEDIR:  difundirMedir(); break;
     case PEDIR_DATO:      pedirDato();     break;
+    case NODO_SIN_RESPUESTA: {
+      char nombre[16];
+      nombreEstacion(nombre, sizeof(nombre), planificador.nodoPerdido());
+      Serial.printf("[LoRa] %s no respondió\n", nombre);
+      break;
+    }
     case RONDA_TERMINADA: cerrarRonda();   break;
     default: break;
   }
@@ -579,15 +585,12 @@ void setup() {
   mqtt.setBufferSize(1024);   // el reporte de estado no entra en los 256 de fabrica
   mqtt.setCallback(alRecibirMqtt);
 
-  Serial.println("\n=================================================");
-  Serial.println(" GATEWAY " FIRMWARE_VERSION " — protocolo LoRa v2");
-  Serial.println("=================================================");
-  Serial.printf(" Periodo %u s | ventana %u s | timeout %u ms | publicar %s\n",
+  Serial.printf("\n[GATEWAY] v" FIRMWARE_VERSION " | período %u s | ventana %u s | timeout %u ms\n",
                 configDeseada.params.periodo_s, configDeseada.params.estabilizacion_s,
-                configDeseada.params.timeout_ms, configDeseada.params.publicar ? "si" : "no");
-  Serial.print(" Nodos:");
-  for (uint8_t i = 0; i < configDeseada.n; i++) Serial.printf(" %u", configDeseada.nodos[i]);
-  Serial.println(configDeseada.n ? "" : " (ninguno)");
+                configDeseada.params.timeout_ms);
+  Serial.print("[GATEWAY] Nodos:");
+  for (uint8_t i = 0; i < configDeseada.n; i++) Serial.printf(" %u", (unsigned)configDeseada.nodos[i]);
+  Serial.println(configDeseada.n ? "" : " ninguno");
 
   xTaskCreatePinnedToCore(TareaRed, "red", 12288, NULL, 1, NULL, 0);
   xTaskCreatePinnedToCore(TareaLED, "led", 2048, NULL, 1, NULL, 1);
