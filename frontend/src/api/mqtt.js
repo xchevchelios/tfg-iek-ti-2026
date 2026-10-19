@@ -48,7 +48,12 @@ export function conectarMqtt({ alRecibir, alCambiarEstado = () => {} }) {
     alCambiarEstado('error', error?.message);
   });
 
-  cliente.on('message', (topic, payload) => {
+  cliente.on('message', (topic, payload, paquete) => {
+    // Un mensaje retenido no es una medicion nueva: es la ultima que el broker
+    // guardo, y la entrega apenas uno se suscribe, sea de hace un minuto o de
+    // hace un mes. Lo reciente ya lo trajo la API al cargar; por MQTT solo
+    // interesa lo que llega en vivo. (Mismo criterio que el servicio de ingesta.)
+    if (paquete?.retain) return;
     try {
       // 'estaciones/<id>/data'
       const estacionId = topic.split('/')[1];

@@ -49,6 +49,15 @@ function aplicarMedicion(estacionId, medicion) {
   const seccion = secciones.get(estacionId);
   if (!seccion) return false;
 
+  // Nunca se retrocede: una medicion igual o mas vieja que la ultima mostrada
+  // (repetida, o llegada fuera de orden) no pisa la vigente ni se agrega al
+  // final de los graficos como si fuera la mas reciente.
+  const previa = ultimaPorEstacion[estacionId];
+  if (previa?.timestamp && medicion.timestamp &&
+      new Date(medicion.timestamp) <= new Date(previa.timestamp)) {
+    return true;
+  }
+
   const etiqueta = horaLegible(medicion.timestamp);
   for (const { clave } of METRICAS) {
     agregarPunto(seccion.graficos[clave], etiqueta, medicion[clave]);
