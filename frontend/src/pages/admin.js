@@ -24,7 +24,11 @@ import {
   leerBitacora,
   listarUsuarios,
 } from '../api/usuarios.js';
+import { conectarPanel, desconectarPanel } from '../api/mqttPanel.js';
 import { mostrarAviso } from '../ui/aviso.js';
+import { iniciarPestanias } from '../ui/pestanias.js';
+import { mostrarTerminal, ocultarTerminal, iniciarTerminal } from '../ui/terminalMqtt.js';
+import { iniciarVistaGateway, mostrarVistaGateway } from '../ui/vistaGateway.js';
 import '../styles/base.css';
 import '../styles/admin.css';
 
@@ -40,12 +44,10 @@ const estadoEstaciones = document.getElementById('estado-tabla');
 const alertaGateway = document.getElementById('alerta-gateway');
 const btnRepublicar = document.getElementById('btn-republicar');
 
-const seccionUsuarios = document.getElementById('seccion-usuarios');
 const formUsuario = document.getElementById('form-usuario');
 const cuerpoUsuarios = document.getElementById('tabla-usuarios');
 const estadoUsuarios = document.getElementById('estado-usuarios');
 
-const seccionBitacora = document.getElementById('seccion-bitacora');
 const cuerpoBitacora = document.getElementById('tabla-bitacora');
 const estadoBitacora = document.getElementById('estado-bitacora');
 
@@ -89,6 +91,7 @@ function manejarError(error) {
 // =================================================================
 
 function mostrarAcceso(mensaje) {
+  desconectarPanel();
   panel.hidden = true;
   barraSesion.hidden = true;
   pantallaAcceso.hidden = false;
@@ -106,10 +109,36 @@ function mostrarPanel(usuario) {
   sesionUsuario.textContent = `${usuario.nombre} · ${etiquetaRol}`;
   sesionUsuario.title = usuario.email;
 
+  // Las pestanias de usuarios y bitacora existen solo para el rol admin. El
+  // servidor rechaza igual esas operaciones; ocultarlas evita ofrecerlas.
   const esAdmin = usuario.rol === 'admin';
-  seccionUsuarios.hidden = !esAdmin;
-  seccionBitacora.hidden = !esAdmin;
+  document.querySelector('[data-pestania="usuarios"]').hidden = !esAdmin;
+  document.querySelector('[data-pestania="bitacora"]').hidden = !esAdmin;
+  pestanias.mostrarDesdeHash();
 }
+
+// =================================================================
+// Pestanias
+// =================================================================
+
+function alMostrarPestania(nombre) {
+  if (nombre !== 'trafico') ocultarTerminal();
+
+  // Gateway y Trafico leen el broker: la conexion se abre recien la primera
+  // vez que se visita una de las dos y queda abierta mientras dure la sesion.
+  if (nombre === 'gateway' || nombre === 'trafico') {
+    conectarPanel().catch(manejarError);
+  }
+  if (nombre === 'gateway') mostrarVistaGateway();
+  if (nombre === 'trafico') mostrarTerminal();
+}
+
+const pestanias = iniciarPestanias(document.getElementById('pestanias'), {
+  porDefecto: 'estaciones',
+  alMostrar: alMostrarPestania,
+});
+iniciarVistaGateway({ manejarError: (error) => manejarError(error) });
+iniciarTerminal();
 
 // =================================================================
 // Estaciones

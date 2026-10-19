@@ -37,6 +37,15 @@
 
     <!-- Estado con sesión -->
     <div id="panel" hidden>
+      <nav id="pestanias" class="pestanias" role="tablist" aria-label="Secciones del panel">
+        <button type="button" role="tab" data-pestania="estaciones">Estaciones</button>
+        <button type="button" role="tab" data-pestania="gateway">Gateway</button>
+        <button type="button" role="tab" data-pestania="trafico">Tráfico MQTT</button>
+        <button type="button" role="tab" data-pestania="usuarios" hidden>Usuarios</button>
+        <button type="button" role="tab" data-pestania="bitacora" hidden>Bitácora</button>
+      </nav>
+
+      <div data-panel="estaciones" role="tabpanel" hidden>
       <section class="panel">
         <h2 class="panel__titulo">Nueva estación</h2>
         <form id="form-alta" class="formulario formulario--grilla">
@@ -105,9 +114,104 @@
           que el historial no quede atribuido a un nodo que ya no es el mismo.
         </p>
       </section>
+      </div>
+
+      <section class="panel" data-panel="gateway" role="tabpanel" hidden>
+        <div class="panel__cabecera">
+          <h2 class="panel__titulo">Gateway</h2>
+          <span id="gw-conexion" class="estado-conexion" data-estado="desconectado">Sin conexión</span>
+        </div>
+        <p id="gw-aviso" class="aviso-acceso" hidden></p>
+
+        <div class="gw-grilla">
+          <div class="gw-tarjeta">
+            <h3 class="gw-subtitulo">Estado</h3>
+            <dl id="gw-estado" class="gw-datos"></dl>
+            <ul id="gw-alertas" class="gw-alertas"></ul>
+          </div>
+          <div class="gw-tarjeta">
+            <h3 class="gw-subtitulo">Lista de nodos</h3>
+            <dl id="gw-nodos" class="gw-datos"></dl>
+            <p id="gw-nodos-veredicto" class="gw-veredicto"></p>
+            <button type="button" id="gw-republicar" hidden>Reenviar al gateway</button>
+          </div>
+        </div>
+
+        <h3 class="gw-subtitulo">Parámetros de medición</h3>
+        <form id="gw-form" novalidate>
+          <div class="tabla-scroll">
+            <table class="tabla gw-tabla">
+              <thead>
+                <tr><th>Parámetro</th><th>Nuevo valor</th><th>Deseado (broker)</th><th>Aplicado por el gateway</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row"><label for="gw-periodo">Período entre rondas</label></th>
+                  <td><input id="gw-periodo" name="periodo_s" type="number" step="1" inputmode="numeric"> s</td>
+                  <td data-deseado="periodo_s"></td><td data-aplicado="periodo_s"></td>
+                </tr>
+                <tr>
+                  <th scope="row"><label for="gw-ventana">Ventana del SDS011</label></th>
+                  <td><input id="gw-ventana" name="estabilizacion_s" type="number" step="1" inputmode="numeric"> s</td>
+                  <td data-deseado="estabilizacion_s"></td><td data-aplicado="estabilizacion_s"></td>
+                </tr>
+                <tr>
+                  <th scope="row"><label for="gw-timeout">Timeout por nodo</label></th>
+                  <td><input id="gw-timeout" name="timeout_ms" type="number" step="100" inputmode="numeric"> ms</td>
+                  <td data-deseado="timeout_ms"></td><td data-aplicado="timeout_ms"></td>
+                </tr>
+                <tr>
+                  <th scope="row"><label for="gw-publicar">Publicar mediciones</label></th>
+                  <td><input id="gw-publicar" name="publicar" type="checkbox"></td>
+                  <td data-deseado="publicar"></td><td data-aplicado="publicar"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="gw-previa" class="gw-previa" aria-live="polite"></div>
+          <p id="gw-error" class="gw-error" role="alert" hidden></p>
+          <div class="gw-acciones">
+            <button type="submit" id="gw-guardar" disabled>Publicar cambios</button>
+            <button type="button" id="gw-descartar" disabled>Descartar</button>
+          </div>
+        </form>
+        <p class="nota">
+          <strong>Deseado</strong> es lo que está publicado en el broker;
+          <strong>aplicado</strong>, lo que el gateway reporta estar usando. Un
+          cambio se aplica al empezar la próxima ronda, así que puede tardar
+          hasta un período en verse en la última columna. Sin publicación, el
+          gateway sigue interrogando a los nodos y muestra los valores por su
+          monitor serie, pero no los envía: esas mediciones no se guardan. Los
+          mismos parámetros se pueden cambiar con <code>gestor.py</code> en la VM;
+          siempre se publica el documento completo, así que vale el último cambio.
+        </p>
+      </section>
+
+      <section class="panel" data-panel="trafico" role="tabpanel" hidden>
+        <div class="panel__cabecera">
+          <h2 class="panel__titulo">Tráfico MQTT</h2>
+          <span id="term-conexion" class="estado-conexion" data-estado="desconectado">Sin conexión</span>
+        </div>
+        <div class="term-barra">
+          <input id="term-filtro" type="search" placeholder="Filtrar por topic (estacion_01, gateway…)"
+                 aria-label="Filtrar por topic">
+          <label class="term-check"><input id="term-seguir" type="checkbox" checked> Seguir al final</label>
+          <button type="button" id="term-pausa" aria-pressed="false">Pausar</button>
+          <button type="button" id="term-limpiar">Limpiar</button>
+        </div>
+        <div id="term-salida" class="terminal" role="log" aria-live="off" tabindex="0"
+             aria-label="Mensajes MQTT recibidos"></div>
+        <p id="term-contador" class="term-contador"></p>
+        <p class="nota">
+          Suscripción de solo lectura a <code>estaciones/#</code> y <code>gateway/#</code>.
+          Una <strong>R</strong> marca un mensaje retenido: el broker lo entrega al
+          conectarse porque es el último estado conocido, no porque acabe de llegar.
+          Se conservan los últimos 500 mensajes.
+        </p>
+      </section>
 
       <!-- Solo para el rol admin -->
-      <section id="seccion-usuarios" class="panel" hidden>
+      <section id="seccion-usuarios" class="panel" data-panel="usuarios" role="tabpanel" hidden>
         <h2 class="panel__titulo">Usuarios</h2>
         <form id="form-usuario" class="formulario formulario--grilla">
           <div class="campo-grupo">
@@ -149,7 +253,7 @@
         </p>
       </section>
 
-      <section id="seccion-bitacora" class="panel" hidden>
+      <section id="seccion-bitacora" class="panel" data-panel="bitacora" role="tabpanel" hidden>
         <h2 class="panel__titulo">Últimas acciones</h2>
         <div class="tabla-scroll">
           <table class="tabla">

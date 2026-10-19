@@ -32,6 +32,13 @@ MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estaciones/+/data")
 MQTT_USER = os.environ.get("MQTT_USER", "")
 MQTT_PASS = os.environ.get("MQTT_PASS", "")
 
+# Usuario MQTT de solo lectura para el panel de administracion: puede leer
+# estaciones/# y gateway/# para mostrar el estado del gateway y el trafico en
+# vivo. A diferencia de web_publico, estas credenciales no van en el codigo del
+# sitio: la API se las entrega solo a quien tiene sesion iniciada.
+MQTT_PANEL_USER = os.environ.get("MQTT_PANEL_USER", "")
+MQTT_PANEL_PASS = os.environ.get("MQTT_PANEL_PASS", "")
+
 # --- Autenticacion con Google (OpenID Connect) ---
 # La identidad la verifica Google; la autorizacion es nuestra: solo entran los
 # correos dados de alta en la tabla `usuarios`. Sin esa lista, cualquier persona

@@ -13,6 +13,7 @@ import config
 from db import init_db
 from routes.auth import bp as bp_auth
 from routes.estaciones import bp as bp_estaciones
+from routes.gateway import bp as bp_gateway
 from routes.mediciones import bp as bp_mediciones
 from routes.usuarios import bp as bp_usuarios
 from seguridad import cargar_sesion
@@ -46,6 +47,7 @@ def create_app():
     app.register_blueprint(bp_auth)
     app.register_blueprint(bp_usuarios)
     app.register_blueprint(bp_estaciones)
+    app.register_blueprint(bp_gateway)
     app.register_blueprint(bp_mediciones)
 
     @app.get("/api/salud")

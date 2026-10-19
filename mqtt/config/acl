@@ -8,6 +8,14 @@ topic readwrite gateway/#
 # mensajes: no amplia lo que ya puede hacer quien tenga esta credencial.
 topic read $SYS/#
 
+# --- USUARIO DEL PANEL DE ADMINISTRACION ---
+# Solo lectura. La API le entrega estas credenciales al navegador unicamente
+# con sesion iniciada: el panel las usa para mostrar el estado del gateway y
+# el trafico en vivo. No puede publicar nada.
+user web_panel
+topic read estaciones/#
+topic read gateway/#
+
 # --- USUARIO PÚBLICO / FRONTEND WEB ---
 user web_publico
 topic read estaciones/+/data
