@@ -19,6 +19,7 @@ from db import (
     migrar_direcciones_lora,
     sembrar_estaciones_existentes,
 )
+from rondas import ResumenInvalido, guardar_resumen
 
 log = logging.getLogger("ingesta")
 
@@ -30,6 +31,9 @@ def on_connect(client, userdata, flags, rc, properties=None):
         log.info("Conectado al broker %s:%s", config.MQTT_HOST, config.MQTT_PORT)
         client.subscribe(config.MQTT_TOPIC)
         log.info("Suscrito al topic %s", config.MQTT_TOPIC)
+        if config.MQTT_TOPIC_RONDAS:
+            client.subscribe(config.MQTT_TOPIC_RONDAS, qos=1)
+            log.info("Suscrito al topic %s (rondas del gateway)", config.MQTT_TOPIC_RONDAS)
     else:
         log.error("Fallo la conexion al broker (codigo %s)", rc)
 
@@ -46,6 +50,9 @@ def on_message(client, userdata, msg):
     # gateway publicaba las mediciones retenidas por error; el v2 ya no.)
     if msg.retain:
         log.info("Mensaje retenido en %s ignorado.", msg.topic)
+        return
+    if config.MQTT_TOPIC_RONDAS and msg.topic == config.MQTT_TOPIC_RONDAS:
+        _guardar_ronda(msg)
         return
     try:
         partes = msg.topic.split("/")
@@ -106,6 +113,35 @@ def on_message(client, userdata, msg):
         log.warning("Payload no es JSON valido: %r", msg.payload[:200])
     except Exception:
         log.exception("Error procesando el mensaje de %s", msg.topic)
+
+
+def _guardar_ronda(msg):
+    """Resumen de una ronda del gateway: desenlace de cada nodo.
+
+    Un error aca nunca afecta a las mediciones, que llegan por otro topic.
+    """
+    try:
+        datos = json.loads(msg.payload)
+        with get_connection() as conn:
+            ronda_id = guardar_resumen(conn, datos)
+            conn.commit()
+        if ronda_id is None:
+            log.debug("Resumen de ronda repetido, ignorado.")
+        else:
+            ultima = datos.get("ultima_ronda") or {}
+            log.info(
+                "Ronda %s registrada: %d con dato, %d sin respuesta, %d no oyeron MEDIR",
+                datos.get("ronda"),
+                len(ultima.get("frescas") or []),
+                len(ultima.get("sin_respuesta") or []),
+                len(ultima.get("viejas") or []),
+            )
+    except json.JSONDecodeError:
+        log.warning("Resumen de ronda no es JSON valido: %r", msg.payload[:200])
+    except ResumenInvalido as error:
+        log.warning("Resumen de ronda descartado: %s", error)
+    except Exception:
+        log.exception("Error guardando el resumen de ronda")
 
 
 def _apagar(signum, _frame):

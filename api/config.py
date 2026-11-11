@@ -29,6 +29,9 @@ DB_PATH = os.environ.get("DB_PATH", str(BASE_DIR / "sensores.db"))
 MQTT_HOST = os.environ.get("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
 MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estaciones/+/data")
+# Resumen de cada ronda que publica el gateway (ver rondas.py). Dejarlo vacio
+# (MQTT_TOPIC_RONDAS=) apaga el registro sin tocar codigo.
+MQTT_TOPIC_RONDAS = os.environ.get("MQTT_TOPIC_RONDAS", "gateway/estado/aplicado").strip()
 MQTT_USER = os.environ.get("MQTT_USER", "")
 MQTT_PASS = os.environ.get("MQTT_PASS", "")
 

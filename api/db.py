@@ -142,6 +142,58 @@ def init_db():
             "CREATE INDEX IF NOT EXISTS idx_bitacora_momento ON bitacora (momento)"
         )
 
+        # --- Rondas del gateway (estadisticas de entrega por nodo) ---
+
+        # Cada encendido del gateway reinicia el contador de ronda en un valor
+        # al azar, asi que la ronda solo tiene sentido dentro de un arranque.
+        # `inicio_ultimo` sigue la deriva del reloj del gateway (ver rondas.py).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS arranques_gateway (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                inicio        TEXT NOT NULL,
+                inicio_ultimo TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rondas_gateway (
+                id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+                arranque_id        INTEGER NOT NULL REFERENCES arranques_gateway(id),
+                ronda              INTEGER NOT NULL,
+                recibida           TEXT NOT NULL,
+                nodos_configurados INTEGER NOT NULL,
+                duracion_ms        INTEGER,
+                excedida           INTEGER NOT NULL DEFAULT 0,
+                descartadas        INTEGER,
+                firmware           TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_rondas_gateway_arranque
+            ON rondas_gateway (arranque_id, ronda)
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_rondas_gateway_recibida ON rondas_gateway (recibida)"
+        )
+        # sensor_ok solo tiene sentido si el dato llego (desenlace 'fresca').
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rondas_nodo (
+                ronda_id   INTEGER NOT NULL REFERENCES rondas_gateway(id),
+                direccion  INTEGER NOT NULL,
+                desenlace  TEXT NOT NULL CHECK (desenlace IN
+                               ('fresca', 'vieja', 'sin_respuesta', 'sin_desenlace')),
+                sensor_ok  INTEGER,
+                PRIMARY KEY (ronda_id, direccion)
+            )
+            """
+        )
+
         conn.commit()
 
 

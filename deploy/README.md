@@ -180,6 +180,40 @@ endpoint `/api/datos_recientes`, que existe solo para ese frontend.
 
 ---
 
+## Actualizar el backend con vuelta atras
+
+Antes de desplegar un cambio en la VM, guardar un punto de restauracion: commit
+actual, `api/.env` y una copia consistente de la base (se puede hacer con los
+servicios andando).
+
+```bash
+cd ~/tfg-sistema
+bash deploy/punto-de-restauracion.sh pre-<cambio>
+git pull
+source api/venv/bin/activate && pip install -r api/requirements.txt
+sudo systemctl restart tfg-api tfg-ingesta
+journalctl -u tfg-ingesta -f
+```
+
+Si algo sale mal:
+
+```bash
+bash ~/tfg-respaldos/pre-<cambio>/restaurar.sh pre-<cambio>              # codigo y .env
+bash ~/tfg-respaldos/pre-<cambio>/restaurar.sh pre-<cambio> --con-base   # ademas, la base
+```
+
+La restauracion deja el repo en el commit viejo sin rama (*detached HEAD*), para
+que un `git pull` no vuelva a traer el cambio. Una vez corregido o revertido en
+GitHub: `git switch main && git pull` y reiniciar los servicios.
+
+`--con-base` pierde las mediciones recibidas desde el punto de restauracion: usarlo
+solo si la base quedo danada. Los cambios de esquema son aditivos (tablas
+nuevas), asi que el codigo viejo funciona con la base nueva.
+
+Los respaldos quedan en `~/tfg-respaldos/`, fuera del repo. Borrar los viejos a mano.
+
+---
+
 ## Verificacion
 
 ```bash
