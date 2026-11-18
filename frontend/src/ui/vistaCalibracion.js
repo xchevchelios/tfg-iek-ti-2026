@@ -1,5 +1,5 @@
 /**
- * Pestaña "Calibración" del panel (solo admin).
+ * Pestaña "Calibración" del panel (solo admin): PM2.5, PM10, temperatura y humedad.
  *
  * Flujo: se elige la estación co-ubicada con el equipo de referencia, se sube
  * el CSV y el servidor devuelve la comparación crudo / lineal / con humedad
@@ -18,7 +18,21 @@ import { listarEstaciones } from '../api/estaciones.js';
 import { mostrarAviso } from './aviso.js';
 
 const NOMBRES_MODELO = { lineal: 'Lineal', humedad: 'Lineal + humedad' };
-const NOMBRES_METRICA = { pm25: 'PM2.5', pm10: 'PM10' };
+const NOMBRES_METRICA = {
+  pm25: 'PM2.5',
+  pm10: 'PM10',
+  temperatura: 'Temperatura',
+  humedad: 'Humedad',
+};
+const UNIDADES = { pm25: 'µg/m³', pm10: 'µg/m³', temperatura: '°C', humedad: '%' };
+const ES_PM = (metrica) => metrica === 'pm25' || metrica === 'pm10';
+
+/** Mismo recorte al rango físico que hace el servidor. */
+function recortar(metrica, valor) {
+  if (metrica === 'temperatura') return valor;
+  if (metrica === 'humedad') return Math.min(100, Math.max(0, valor));
+  return Math.max(0, valor);
+}
 
 let manejarError = (error) => mostrarAviso(error.message, 'error');
 let ultimoAjuste = null; // { parametros, resultado }
@@ -78,7 +92,10 @@ function dibujarDispersion(resultado, mejor) {
   if (grafico) grafico.destroy();
   const { pares, modelos } = resultado;
   const coef = mejor ? modelos[mejor].coef : null;
-  const maximo = Math.max(1, ...pares.flatMap((p) => [p.sds, p.ref])) * 1.05;
+  const valores = pares.flatMap((p) => [p.sds, p.ref]);
+  const maximo = Math.max(1, ...valores) * 1.05;
+  // La temperatura no arranca en 0; las concentraciones y la HR si.
+  const minimo = resultado.metrica === 'temperatura' ? Math.floor(Math.min(...valores) - 1) : 0;
 
   const conjuntos = [
     {
@@ -93,7 +110,7 @@ function dibujarDispersion(resultado, mejor) {
       label: `Calibrado (${NOMBRES_MODELO[mejor].toLowerCase()})`,
       data: pares.map((p) => ({
         x: p.ref,
-        y: Math.max(0, coef.a + coef.b * p.sds + coef.c * p.hr),
+        y: recortar(resultado.metrica, coef.a + coef.b * p.sds + coef.c * p.hr),
       })),
       backgroundColor: 'rgba(0, 123, 255, 0.6)',
       pointRadius: 3,
@@ -102,14 +119,14 @@ function dibujarDispersion(resultado, mejor) {
   conjuntos.push({
     label: 'Ideal (1:1)',
     type: 'line',
-    data: [{ x: 0, y: 0 }, { x: maximo, y: maximo }],
+    data: [{ x: minimo, y: minimo }, { x: maximo, y: maximo }],
     borderColor: '#6c757d',
     borderDash: [6, 4],
     borderWidth: 1,
     pointRadius: 0,
   });
 
-  const unidad = `${NOMBRES_METRICA[resultado.metrica]} (µg/m³)`;
+  const unidad = `${NOMBRES_METRICA[resultado.metrica]} (${UNIDADES[resultado.metrica]})`;
   grafico = new Chart($('cal-dispersion').getContext('2d'), {
     type: 'scatter',
     data: { datasets: conjuntos },
@@ -117,22 +134,23 @@ function dibujarDispersion(resultado, mejor) {
       maintainAspectRatio: false,
       animation: false,
       scales: {
-        x: { min: 0, max: maximo, title: { display: true, text: `Referencia ${unidad}` } },
-        y: { min: 0, max: maximo, title: { display: true, text: `Nodo ${unidad}` } },
+        x: { min: minimo, max: maximo, title: { display: true, text: `Referencia ${unidad}` } },
+        y: { min: minimo, max: maximo, title: { display: true, text: `Nodo ${unidad}` } },
       },
     },
   });
 }
 
 function mostrarResultado(resultado) {
-  const { resumen, referencia, modelos } = resultado;
+  const { resumen, referencia, modelos, metrica } = resultado;
   $('cal-resultado').hidden = false;
 
   $('cal-resumen').textContent =
     `${referencia.muestras} muestras de referencia (${fechaCorta(referencia.desde)} – ` +
     `${fechaCorta(referencia.hasta)}), ${resumen.mediciones_sensor} mediciones del nodo. ` +
-    `${resumen.ventanas_comunes} ventanas en común, ${resumen.descartadas_humedad} ` +
-    `descartadas por humedad: ${resumen.pares} pares para el ajuste.`;
+    `${resumen.ventanas_comunes} ventanas en común` +
+    (ES_PM(metrica) ? `, ${resumen.descartadas_humedad} descartadas por humedad` : '') +
+    `: ${resumen.pares} pares para el ajuste.`;
 
   const validos = Object.values(modelos).filter((m) => !m.error);
   const mejor = validos.length
@@ -144,7 +162,7 @@ function mostrarResultado(resultado) {
   cuerpo.textContent = '';
   const base = validos[0]?.validacion.crudo;
   filaModelo(cuerpo, 'Sin calibrar', 'x', base);
-  for (const modelo of Object.keys(NOMBRES_MODELO)) {
+  for (const modelo of Object.keys(modelos)) {
     const m = modelos[modelo];
     if (m.error) {
       const fila = document.createElement('tr');
@@ -182,7 +200,10 @@ async function ajustar(evento) {
     estacion: datos.get('estacion'),
     metrica: datos.get('metrica'),
     ventana_min: Number(datos.get('ventana_min')),
-    hr_max: datos.get('hr_max') === '' ? null : Number(datos.get('hr_max')),
+    hr_max:
+      !ES_PM(datos.get('metrica')) || datos.get('hr_max') === ''
+        ? null
+        : Number(datos.get('hr_max')),
     utc_offset_horas: datos.get('utc_offset_horas'),
     csv: await archivo.text(),
   };
@@ -305,6 +326,13 @@ async function cargarEstaciones() {
 export function iniciarVistaCalibracion(opciones = {}) {
   if (opciones.manejarError) manejarError = opciones.manejarError;
   $('form-calibracion').addEventListener('submit', ajustar);
+  // El descarte por humedad alta es solo para PM: con temperatura y humedad
+  // interesa calibrar todo el rango.
+  const alternarHr = () => {
+    $('cal-grupo-hr').hidden = !ES_PM($('cal-metrica').value);
+  };
+  $('cal-metrica').addEventListener('change', alternarHr);
+  alternarHr();
   $('form-cal-guardar').addEventListener('submit', (e) => e.preventDefault());
   $('cal-ver-anuladas').addEventListener('change', cargarCalibraciones);
 }

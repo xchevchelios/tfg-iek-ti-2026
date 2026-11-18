@@ -26,6 +26,7 @@ from calibracion import (
     MODELOS,
     ErrorCalibracion,
     calibrar_desde_csv,
+    evaluar_coef,
     guardar,
 )
 from db import get_connection, init_db
@@ -44,8 +45,9 @@ def _formula(c):
 
 def imprimir(resultado):
     r, ref = resultado["resumen"], resultado["referencia"]
+    filtro = f" · HR max {resultado['hr_max']}" if resultado["hr_max"] else ""
     print(f"\nEstacion {resultado['estacion']} · {resultado['metrica']} · "
-          f"ventana {resultado['ventana_min']} min · HR max {resultado['hr_max']}")
+          f"ventana {resultado['ventana_min']} min{filtro}")
     print(f"Referencia: {ref['muestras']} muestras, {ref['desde']} a {ref['hasta']}")
     print(f"Nodo: {r['mediciones_sensor']} mediciones. Ventanas en comun: "
           f"{r['ventanas_comunes']}, descartadas por HR: {r['descartadas_humedad']}, "
@@ -53,7 +55,7 @@ def imprimir(resultado):
 
     filas = []
     tipo = None
-    for modelo in MODELOS:
+    for modelo in resultado["modelos"]:
         m = resultado["modelos"][modelo]
         if "error" in m:
             filas.append((modelo, m["error"], None))
@@ -83,13 +85,14 @@ def exportar_pares(resultado, ruta):
     with open(ruta, "w", newline="", encoding="utf-8") as archivo:
         escritor = csv.writer(archivo)
         cabecera = ["t_utc", "sds", "hr", "ref"]
-        modelos = [m for m in MODELOS if "error" not in resultado["modelos"][m]]
-        escritor.writerow(cabecera + [f"cal_{m}" for m in modelos])
+        modelos = [m for m, v in resultado["modelos"].items() if "error" not in v]
+        escritor.writerow(cabecera + [f"cal_{m}" for m in modelos])  # sds = valor del nodo
         for p in resultado["pares"]:
             calibrados = []
             for m in modelos:
                 c = resultado["modelos"][m]["coef"]
-                calibrados.append(round(max(0.0, c["a"] + c["b"] * p["sds"] + c["c"] * p["hr"]), 3))
+                calibrados.append(round(evaluar_coef(c["a"], c["b"], c["c"], p["sds"], p["hr"],
+                                                     resultado["metrica"]), 3))
             escritor.writerow([p["t"], p["sds"], p["hr"], p["ref"], *calibrados])
     print(f"\nPares exportados a {ruta}")
 
@@ -121,14 +124,16 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--estacion")
     ap.add_argument("--metrica", choices=METRICAS_CALIBRABLES)
-    ap.add_argument("--csv", help="CSV del equipo de referencia (timestamp, pm25, pm10)")
+    ap.add_argument("--csv", help="CSV del equipo de referencia "
+                    "(timestamp y alguna de: pm25, pm10, temperatura, humedad)")
     ap.add_argument("--ventana", type=int, default=60, help="minutos (por defecto 60)")
     ap.add_argument("--hr-max", type=float, default=80.0,
-                    help="descarta ventanas con HR mayor (por defecto 80; 0 = sin filtro)")
+                    help="solo PM: descarta ventanas con HR mayor (por defecto 80; 0 = sin filtro)")
     ap.add_argument("--utc", action="store_true",
                     help="las fechas del CSV sin zona estan en UTC (por defecto, hora local)")
     ap.add_argument("--pares", help="exporta los pares a este CSV")
-    ap.add_argument("--guardar", choices=MODELOS, help="guarda este modelo")
+    ap.add_argument("--guardar", choices=MODELOS,
+                    help="guarda este modelo ('humedad' solo existe para PM)")
     ap.add_argument("--desde", help="vigente desde, hora local (por defecto, todo el historial)")
     ap.add_argument("--notas")
     ap.add_argument("--listar", action="store_true")

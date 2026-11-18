@@ -129,7 +129,7 @@ def _publicar_calibrado(client, station_id, datos, calibrador):
 
     Un fallo aca no afecta a la medicion, que ya quedo guardada.
     """
-    if not config.MQTT_TOPIC_CALIBRADO:
+    if not config.MQTT_TOPIC_CALIBRADO or client is None:
         return
     try:
         salida = calibrador.calibrar_fila(station_id, datos)

@@ -1,13 +1,20 @@
-"""Calibracion de PM2.5 / PM10 contra un equipo de referencia.
+"""Calibracion de los sensores contra un equipo de referencia.
 
 Idea general
 ------------
 El SDS011 tiene un sesgo propio de cada unidad y sobreestima con humedad alta
-(las particulas absorben agua y el laser las ve mas grandes). Con mediciones de
-un equipo calibrado tomadas junto a un nodo se ajusta, por estacion y metrica:
+(las particulas absorben agua y el laser las ve mas grandes). El DHT21 tambien
+tiene un desvio propio en temperatura y en humedad. Con mediciones de un equipo
+calibrado tomadas junto a un nodo se ajusta, por estacion y metrica:
 
-    lineal:   ref = a + b * sds
-    humedad:  ref = a + b * sds + c * HR
+    PM2.5 / PM10:          lineal:   ref = a + b * x
+                           humedad:  ref = a + b * x + c * HR
+    temperatura / humedad: lineal:   ref = a + b * x
+
+En el modelo de PM con humedad, HR es la humedad CRUDA del DHT21 del mismo
+nodo: con esa se ajusto, asi que con esa se aplica, aunque la humedad tenga su
+propia calibracion. Para temperatura y humedad no se descartan ventanas por
+humedad alta (justamente interesa calibrar todo el rango).
 
 Reglas que ordenan el diseno:
 
@@ -27,11 +34,29 @@ import csv
 import io
 import json
 import math
+import re
 from bisect import bisect_right
 from datetime import datetime, timedelta, timezone
 
-METRICAS_CALIBRABLES = ("pm25", "pm10")
+METRICAS_PM = ("pm25", "pm10")
+METRICAS_CALIBRABLES = ("pm25", "pm10", "temperatura", "humedad")
 MODELOS = ("lineal", "humedad")
+
+# Rango fisico de cada magnitud: el valor calibrado se recorta a el. Una
+# ordenada negativa no puede dar concentraciones negativas, ni una pendiente
+# llevar la humedad relativa por encima del 100 %. La temperatura no se recorta.
+LIMITES = {
+    "pm25": (0.0, None),
+    "pm10": (0.0, None),
+    "temperatura": (None, None),
+    "humedad": (0.0, 100.0),
+}
+
+
+def modelos_de(metrica):
+    """El modelo con HR solo tiene sentido para PM (es la correccion por
+    higroscopicidad de las particulas)."""
+    return MODELOS if metrica in METRICAS_PM else ("lineal",)
 
 # 'valida_desde' de una calibracion que se aplica a todo el historial.
 DESDE_SIEMPRE = "1970-01-01T00:00:00Z"
@@ -56,12 +81,34 @@ class ErrorCalibracion(ValueError):
 # =================================================================
 
 def crear_tabla(conn):
+    # La primera version de la tabla solo admitia pm25/pm10 en el CHECK, y
+    # SQLite no permite modificar un CHECK: se reconstruye copiando las filas.
+    actual = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'calibraciones'"
+    ).fetchone()
+    if actual and "temperatura" not in actual[0]:
+        conn.execute("ALTER TABLE calibraciones RENAME TO calibraciones_v1")
+        _crear_tabla_actual(conn)
+        conn.execute("INSERT INTO calibraciones SELECT * FROM calibraciones_v1")
+        conn.execute("DROP TABLE calibraciones_v1")
+    else:
+        _crear_tabla_actual(conn)
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_calibraciones_estacion
+        ON calibraciones (station_id, metrica, valida_desde)
+        """
+    )
+
+
+def _crear_tabla_actual(conn):
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS calibraciones (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             station_id    TEXT NOT NULL REFERENCES estaciones(id),
-            metrica       TEXT NOT NULL CHECK (metrica IN ('pm25', 'pm10')),
+            metrica       TEXT NOT NULL CHECK (metrica IN
+                              ('pm25', 'pm10', 'temperatura', 'humedad')),
             modelo        TEXT NOT NULL CHECK (modelo IN ('lineal', 'humedad')),
             a             REAL NOT NULL,
             b             REAL NOT NULL,
@@ -86,12 +133,6 @@ def crear_tabla(conn):
             anulada       INTEGER NOT NULL DEFAULT 0,
             anulada_en    TEXT
         )
-        """
-    )
-    conn.execute(
-        """
-        CREATE INDEX IF NOT EXISTS idx_calibraciones_estacion
-        ON calibraciones (station_id, metrica, valida_desde)
         """
     )
 
@@ -179,10 +220,15 @@ def ajustar(pares, modelo):
     return coef[0], coef[1], coef[2] if modelo == "humedad" else 0.0
 
 
-def evaluar_coef(a, b, c, sds, hr):
-    """Valor calibrado, saturado en 0 (una ordenada negativa no puede dar
-    concentraciones negativas)."""
-    return max(0.0, a + b * sds + c * (hr or 0.0))
+def evaluar_coef(a, b, c, x, hr, metrica="pm25"):
+    """Valor calibrado, recortado al rango fisico de la magnitud."""
+    valor = a + b * x + c * (hr or 0.0)
+    minimo, maximo = LIMITES[metrica]
+    if minimo is not None:
+        valor = max(minimo, valor)
+    if maximo is not None:
+        valor = min(maximo, valor)
+    return valor
 
 
 def metricas(pred, ref):
@@ -224,10 +270,20 @@ _ALIAS = {
     "time": "timestamp",
     "pm25": "pm25", "pm2.5": "pm25", "pm2_5": "pm25", "pm 2.5": "pm25",
     "pm10": "pm10", "pm 10": "pm10",
+    "temperatura": "temperatura", "temp": "temperatura", "temperature": "temperatura",
+    "t": "temperatura", "temp_c": "temperatura",
+    "humedad": "humedad", "hr": "humedad", "rh": "humedad", "humidity": "humedad",
+    "hum": "humedad", "humedad_relativa": "humedad",
 }
 
 
-def _numero(texto):
+def _canonica(columna):
+    """'PM2.5 (µg/m³)' -> 'pm25', 'Temperatura [°C]' -> 'temperatura'."""
+    limpio = re.sub(r"\(.*?\)|\[.*?\]", "", columna or "").strip().lower()
+    return _ALIAS.get(limpio)
+
+
+def _numero(texto, admite_negativos=False):
     texto = (texto or "").strip()
     if not texto:
         return None
@@ -238,14 +294,18 @@ def _numero(texto):
         valor = float(texto)
     except ValueError:
         return None
-    return valor if math.isfinite(valor) and valor >= 0 else None
+    if not math.isfinite(valor) or (valor < 0 and not admite_negativos):
+        return None
+    return valor
 
 
 def leer_referencia(texto_csv, offset_horas):
     """CSV del equipo de referencia -> lista de (datetime UTC, {pm25, pm10}).
 
-    Columnas reconocidas: timestamp/fecha, pm25 (o pm2.5) y pm10, en µg/m³.
-    Separador coma o punto y coma; coma decimal admitida.
+    Columnas reconocidas: timestamp/fecha, pm25 (o pm2.5) y pm10 en µg/m³,
+    temperatura (o temp) en °C y humedad (o hr, rh) en %. Las unidades entre
+    parentesis o corchetes en la cabecera se ignoran. Separador coma o punto y
+    coma; coma decimal admitida.
     """
     texto_csv = (texto_csv or "").lstrip("﻿")
     if not texto_csv.strip():
@@ -255,17 +315,17 @@ def leer_referencia(texto_csv, offset_horas):
     except csv.Error:
         dialecto = csv.excel
     lector = csv.DictReader(io.StringIO(texto_csv), dialect=dialecto)
-    columnas = {
-        c: _ALIAS.get(c.strip().lower().replace("µg/m3", "").strip())
-        for c in (lector.fieldnames or [])
-    }
+    columnas = {c: _canonica(c) for c in (lector.fieldnames or [])}
     if "timestamp" not in columnas.values():
         raise ErrorCalibracion(
             "El CSV necesita una columna 'timestamp' (o 'fecha'). Columnas "
             f"encontradas: {', '.join(lector.fieldnames or [])}."
         )
-    if not {"pm25", "pm10"} & set(columnas.values()):
-        raise ErrorCalibracion("El CSV necesita una columna 'pm25' o 'pm10'.")
+    if not set(METRICAS_CALIBRABLES) & set(columnas.values()):
+        raise ErrorCalibracion(
+            "El CSV necesita al menos una columna de datos: pm25, pm10, "
+            "temperatura o humedad."
+        )
 
     muestras = []
     for numero_fila, fila in enumerate(lector, start=2):
@@ -277,8 +337,10 @@ def leer_referencia(texto_csv, offset_horas):
                     momento = parsear_ts(fila.get(original), offset_horas)
                 except ErrorCalibracion as error:
                     raise ErrorCalibracion(f"Fila {numero_fila}: {error}") from None
-            elif canonica in ("pm25", "pm10"):
-                valores[canonica] = _numero(fila.get(original))
+            elif canonica in METRICAS_CALIBRABLES:
+                valores[canonica] = _numero(
+                    fila.get(original), admite_negativos=canonica == "temperatura"
+                )
         muestras.append((momento, valores))
     if not muestras:
         raise ErrorCalibracion("El CSV no tiene filas de datos.")
@@ -323,10 +385,16 @@ def _promediar(muestras, ventana_s):
 def armar_pares(conn, station_id, metrica, referencia, ventana_min=60, hr_max=80.0):
     """Cruza la referencia con las mediciones de la estacion, por ventana.
 
-    Devuelve (pares, resumen). Cada par: {t, sds, hr, ref}.
+    Devuelve (pares, resumen). Cada par: {t, sds, hr, ref}; 'sds' es el valor
+    del nodo para la metrica elegida (el nombre viene del SDS011) y 'hr' la
+    humedad cruda del nodo.
     """
     if metrica not in METRICAS_CALIBRABLES:
-        raise ErrorCalibracion("Solo se calibran pm25 y pm10.")
+        raise ErrorCalibracion(
+            f"Metrica no calibrable. Opciones: {', '.join(METRICAS_CALIBRABLES)}."
+        )
+    if metrica not in METRICAS_PM:
+        hr_max = None  # el filtro por humedad es solo para PM
     ventana_s = int(ventana_min) * 60
     if ventana_s <= 0:
         raise ErrorCalibracion("La ventana tiene que ser positiva.")
@@ -385,7 +453,7 @@ def armar_pares(conn, station_id, metrica, referencia, ventana_min=60, hr_max=80
 # Evaluacion de los modelos
 # =================================================================
 
-def evaluar_modelo(pares, modelo):
+def evaluar_modelo(pares, modelo, metrica="pm25"):
     """Coeficientes finales (ajustados con todos los pares) y metricas de
     validacion.
 
@@ -407,7 +475,7 @@ def evaluar_modelo(pares, modelo):
 
     ref = [p["ref"] for p in tramo_val]
     crudo = [p["sds"] for p in tramo_val]
-    calibrado = [evaluar_coef(av, bv, cv, p["sds"], p["hr"]) for p in tramo_val]
+    calibrado = [evaluar_coef(av, bv, cv, p["sds"], p["hr"], metrica) for p in tramo_val]
 
     return {
         "modelo": modelo,
@@ -421,7 +489,7 @@ def evaluar_modelo(pares, modelo):
     }
 
 
-def evaluar(pares):
+def evaluar(pares, metrica="pm25"):
     """Evalua los dos modelos; uno que no se puede ajustar informa el motivo."""
     if not pares:
         raise ErrorCalibracion(
@@ -429,9 +497,9 @@ def evaluar(pares):
             "Revisar la estacion elegida, el rango de fechas y la zona horaria."
         )
     resultado = {}
-    for modelo in MODELOS:
+    for modelo in modelos_de(metrica):
         try:
-            resultado[modelo] = evaluar_modelo(pares, modelo)
+            resultado[modelo] = evaluar_modelo(pares, modelo, metrica)
         except ErrorCalibracion as error:
             resultado[modelo] = {"modelo": modelo, "error": str(error)}
     return resultado
@@ -440,6 +508,8 @@ def evaluar(pares):
 def calibrar_desde_csv(conn, station_id, metrica, texto_csv, *, ventana_min=60,
                        hr_max=80.0, offset_horas=-3.0):
     referencia = leer_referencia(texto_csv, offset_horas)
+    if metrica not in METRICAS_PM:
+        hr_max = None
     pares, resumen = armar_pares(conn, station_id, metrica, referencia,
                                  ventana_min, hr_max)
     return {
@@ -453,7 +523,7 @@ def calibrar_desde_csv(conn, station_id, metrica, texto_csv, *, ventana_min=60,
             "hasta": texto_utc(referencia[-1][0]),
         },
         "resumen": resumen,
-        "modelos": evaluar(pares),
+        "modelos": evaluar(pares, metrica),
         "pares": pares,
     }
 
@@ -533,11 +603,14 @@ class Calibrador:
             # El modelo con humedad no se puede evaluar sin HR: se informa el
             # crudo sin marcarlo como calibrado, en vez de inventar un valor.
             return crudo, None
-        return round(evaluar_coef(a, b, c, crudo, humedad), 1), cal_id
+        return round(evaluar_coef(a, b, c, crudo, humedad, metrica), 1), cal_id
 
     def calibrar_fila(self, station_id, fila):
-        """Agrega pm25_crudo/pm10_crudo y reemplaza pm25/pm10 por el valor
-        calibrado. `calibracion` dice que version se aplico a cada metrica."""
+        """Agrega <metrica>_crudo y reemplaza cada metrica por su valor
+        calibrado. `calibracion` dice que version se aplico a cada una.
+
+        La HR que entra al modelo de PM es siempre la cruda de `fila`, nunca
+        la humedad ya calibrada: es con la que se ajusto ese modelo."""
         salida = dict(fila)
         usadas = {}
         for metrica in METRICAS_CALIBRABLES:

@@ -226,12 +226,14 @@
             <select id="cal-metrica" name="metrica">
               <option value="pm25">PM2.5</option>
               <option value="pm10">PM10</option>
+              <option value="temperatura">Temperatura</option>
+              <option value="humedad">Humedad</option>
             </select>
           </div>
           <div class="campo-grupo">
             <label for="cal-archivo">CSV de la referencia</label>
             <input id="cal-archivo" name="archivo" type="file" accept=".csv,.txt,text/csv" required>
-            <small>Columnas: timestamp, pm25 y/o pm10 (µg/m³)</small>
+            <small>Columnas: timestamp y pm25, pm10 (µg/m³), temperatura (°C) o humedad (%)</small>
           </div>
           <div class="campo-grupo">
             <label for="cal-zona">Hora del CSV</label>
@@ -250,7 +252,7 @@
               <option value="1440">24 horas</option>
             </select>
           </div>
-          <div class="campo-grupo">
+          <div class="campo-grupo" id="cal-grupo-hr">
             <label for="cal-hr">Descartar HR mayor a</label>
             <input id="cal-hr" name="hr_max" type="number" min="30" max="100" step="1" value="80">
             <small>% — el SDS011 no es confiable con humedad alta</small>
@@ -306,7 +308,9 @@
         </div>
         <p id="estado-calibraciones" class="nota" hidden></p>
         <p class="nota">
-          El dato crudo del sensor no se modifica nunca: la calibración se aplica
+          En el modelo de PM con humedad se usa la humedad cruda del DHT21,
+          aunque la humedad tenga su propia calibración: es con la que se
+          ajustó. El dato crudo del sensor no se modifica nunca: la calibración se aplica
           al consultar, en el historial, en las últimas lecturas y en el canal en
           vivo. Cada medición usa la calibración vigente en su fecha. Anular una
           calibración hace que vuelva a regir la anterior, o el valor crudo si no

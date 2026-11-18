@@ -31,6 +31,14 @@ ESTACION = "estacion_01"
 
 # Modelo "verdadero" del sensor: sds = 2 + 1.6·ref + 0.12·(HR − 50) + ruido
 A_SDS, B_SDS, C_SDS = 2.0, 1.6, 0.12
+# DHT21: temp_nodo = 0.8 + 1.03·T_ref ; hr_nodo = 4 + 0.92·HR_ref
+A_T, B_T = 0.8, 1.03
+A_HR, B_HR = 4.0, 0.92
+
+
+def _temp_ref(t):
+    horas = (t - T0).total_seconds() / 3600
+    return 27 + 6 * math.sin(horas / 24 * 2 * math.pi - 1.0)
 
 
 def _verdad(t):
@@ -54,20 +62,24 @@ def _sembrar(conn, dias=6, periodo_s=300):
         sds = A_SDS + B_SDS * pm + C_SDS * (hr - 50) + rnd.gauss(0, 1.0)
         conn.execute(
             "INSERT INTO mediciones (timestamp, station_id, pm25, pm10, temperatura, humedad) "
-            "VALUES (?, ?, ?, ?, 25, ?)",
-            (calibracion.texto_utc(t), ESTACION, round(sds, 1), round(sds * 1.3, 1), round(hr, 1)),
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (calibracion.texto_utc(t), ESTACION, round(sds, 1), round(sds * 1.3, 1),
+             round(A_T + B_T * _temp_ref(t) + rnd.gauss(0, 0.1), 2), round(hr, 1)),
         )
         t += timedelta(seconds=periodo_s)
 
 
 def _csv_referencia(dias=6, periodo_s=60):
-    """Planilla 'a la espanola': punto y coma, coma decimal y hora local sin zona."""
-    lineas = ["Fecha;PM2.5;PM10"]
+    """Planilla 'a la espanola': punto y coma, coma decimal, hora local sin zona
+    y unidades en la cabecera."""
+    lineas = ["Fecha;PM2.5 (µg/m³);PM10;Temperatura (°C);HR [%]"]
     t = T0
     while t < T0 + timedelta(days=dias):
-        pm, _ = _verdad(t)
+        pm, hr_nodo = _verdad(t)
+        hr_ref = (hr_nodo - A_HR) / B_HR
         local = t.astimezone(LOCAL).strftime("%d/%m/%Y %H:%M:%S")
-        lineas.append(f"{local};{pm:.2f}".replace(".", ",") + f";{pm * 1.25:.2f}".replace(".", ","))
+        numeros = ";".join(f"{v:.2f}" for v in (pm, pm * 1.25, _temp_ref(t), hr_ref))
+        lineas.append(f"{local};" + numeros.replace(".", ","))
         t += timedelta(seconds=periodo_s)
     return "\n".join(lineas)
 
@@ -145,6 +157,75 @@ class TestNucleo(unittest.TestCase):
                     conn, ESTACION, "pm25", "timestamp,pm25\n2025-01-01T00:00:00Z,10",
                     offset_horas=-3)
 
+    def test_temperatura_y_humedad(self):
+        with db.get_connection() as conn:
+            temp = calibracion.calibrar_desde_csv(conn, ESTACION, "temperatura", self.csv,
+                                                  offset_horas=-3)
+            hum = calibracion.calibrar_desde_csv(conn, ESTACION, "humedad", self.csv,
+                                                 offset_horas=-3)
+        for r in (temp, hum):
+            # Solo el modelo lineal, sin filtro por humedad (aunque se pida 80 %).
+            self.assertEqual(list(r["modelos"]), ["lineal"])
+            self.assertIsNone(r["hr_max"])
+            self.assertEqual(r["resumen"]["descartadas_humedad"], 0)
+            self.assertEqual(r["resumen"]["pares"], 6 * 24)
+        ct = temp["modelos"]["lineal"]["coef"]
+        self.assertAlmostEqual(ct["b"], 1 / B_T, delta=0.01)
+        self.assertAlmostEqual(ct["a"], -A_T / B_T, delta=0.3)
+        ch = hum["modelos"]["lineal"]["coef"]
+        self.assertAlmostEqual(ch["b"], 1 / B_HR, delta=0.01)
+        self.assertAlmostEqual(ch["a"], -A_HR / B_HR, delta=0.5)
+        self.assertLess(hum["modelos"]["lineal"]["validacion"]["calibrado"]["rmse"], 0.5)
+
+    def test_limites_fisicos(self):
+        cal = calibracion.Calibrador([
+            {"id": 1, "station_id": "e", "metrica": "humedad", "a": 5, "b": 1.1, "c": 0,
+             "valida_desde": calibracion.DESDE_SIEMPRE},
+            {"id": 2, "station_id": "e", "metrica": "temperatura", "a": -2, "b": 1, "c": 0,
+             "valida_desde": calibracion.DESDE_SIEMPRE},
+        ])
+        self.assertEqual(cal.valor("e", "humedad", "2026-11-15T00:00:00Z", 98, None), (100.0, 1))
+        self.assertEqual(cal.valor("e", "temperatura", "2026-11-15T00:00:00Z", 1, None), (-1.0, 2))
+
+    def test_pm_usa_la_humedad_cruda(self):
+        cal = calibracion.Calibrador([
+            {"id": 1, "station_id": "e", "metrica": "humedad", "a": 0, "b": 0.5, "c": 0,
+             "valida_desde": calibracion.DESDE_SIEMPRE},
+            {"id": 2, "station_id": "e", "metrica": "pm25", "a": 0, "b": 1, "c": 0.1,
+             "valida_desde": calibracion.DESDE_SIEMPRE},
+        ])
+        fila = cal.calibrar_fila("e", {"timestamp": "2026-11-15T00:00:00Z", "pm25": 10,
+                                       "humedad": 80, "temperatura": 25})
+        self.assertEqual(fila["humedad"], 40.0)
+        self.assertEqual(fila["pm25"], 18.0)  # 10 + 0.1·80, no 10 + 0.1·40
+        self.assertEqual(fila["temperatura"], 25)
+        self.assertIsNone(fila["calibracion"]["temperatura"])
+
+    def test_migra_la_tabla_vieja(self):
+        import sqlite3
+        conn = sqlite3.connect(":memory:")
+        conn.execute("CREATE TABLE calibraciones (id INTEGER PRIMARY KEY, metrica TEXT "
+                     "CHECK (metrica IN ('pm25', 'pm10')))")
+        conn.execute("INSERT INTO calibraciones VALUES (7, 'pm25')")
+        # Con las columnas reales de la primera version:
+        conn.execute("DROP TABLE calibraciones")
+        calibracion._crear_tabla_actual(conn)
+        sql_v1 = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'calibraciones'"
+                              ).fetchone()[0]
+        conn.execute("DROP TABLE calibraciones")
+        conn.execute(sql_v1.replace("('pm25', 'pm10', 'temperatura', 'humedad')",
+                                    "('pm25', 'pm10')"))
+        conn.execute("INSERT INTO calibraciones (station_id, metrica, modelo, a, b, valida_desde, "
+                     "ventana_min, n_pares, validacion, n_validacion, pares_json, creada_en) "
+                     "VALUES ('e', 'pm25', 'lineal', 1, 2, 'x', 60, 3, 'en_muestra', 3, '[]', 'x')")
+        calibracion.crear_tabla(conn)
+        self.assertEqual(conn.execute("SELECT metrica FROM calibraciones").fetchall(), [("pm25",)])
+        conn.execute("INSERT INTO calibraciones (station_id, metrica, modelo, a, b, valida_desde, "
+                     "ventana_min, n_pares, validacion, n_validacion, pares_json, creada_en) "
+                     "VALUES ('e', 'humedad', 'lineal', 1, 2, 'x', 60, 3, 'en_muestra', 3, '[]', 'x')")
+        calibracion.crear_tabla(conn)  # idempotente
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM calibraciones").fetchone()[0], 2)
+
     def test_versionado_por_fecha(self):
         cal = calibracion.Calibrador([
             {"id": 1, "station_id": "e", "metrica": "pm25", "a": 0, "b": 0.5, "c": 0,
@@ -217,7 +298,16 @@ class TestApi(unittest.TestCase):
         hist_hr = self.cliente.get(
             f"/api/historial?estacion={ESTACION}&metrica=humedad&start=2026-11-12&end=2026-11-13"
         ).get_json()
-        self.assertNotIn("crudo", hist_hr[0])
+        self.assertEqual(hist_hr[0]["y"], hist_hr[0]["crudo"])  # sin calibracion de HR
+
+        r = self.cliente.post("/api/calibraciones", json=self._cuerpo(metrica="temperatura",
+                              modelo="lineal"), headers=self.h)
+        self.assertEqual(r.status_code, 201, r.get_json())
+        fila_t = self.cliente.get("/api/mediciones/ultimas?limite=1").get_json()[ESTACION][-1]
+        self.assertEqual(fila_t["calibracion"]["temperatura"], r.get_json()["id"])
+        t_ref = _temp_ref(calibracion.parsear_ts(fila_t["timestamp"]))
+        self.assertAlmostEqual(fila_t["temperatura"], t_ref, delta=0.3)
+        self.cliente.delete(f"/api/calibraciones/{r.get_json()['id']}", headers=self.h)
 
         # Anular vuelve al crudo.
         r = self.cliente.delete(f"/api/calibraciones/{cal_id}", headers=self.h)
@@ -231,9 +321,14 @@ class TestApi(unittest.TestCase):
                               json=self._cuerpo(estacion="estacion_99"), headers=self.h)
         self.assertEqual(r.status_code, 400)
         r = self.cliente.post("/api/calibraciones/ajustar",
-                              json=self._cuerpo(metrica="humedad"), headers=self.h)
+                              json=self._cuerpo(metrica="co2"), headers=self.h)
         self.assertEqual(r.status_code, 400)
         r = self.cliente.post("/api/calibraciones", json=self._cuerpo(modelo="cubico"),
+                              headers=self.h)
+        self.assertEqual(r.status_code, 400)
+        # El modelo con HR no existe para temperatura ni para humedad.
+        r = self.cliente.post("/api/calibraciones",
+                              json=self._cuerpo(metrica="temperatura", modelo="humedad"),
                               headers=self.h)
         self.assertEqual(r.status_code, 400)
 

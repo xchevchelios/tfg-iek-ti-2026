@@ -1,4 +1,5 @@
-"""Endpoints de calibracion de PM contra un equipo de referencia.
+"""Endpoints de calibracion contra un equipo de referencia (PM, temperatura
+y humedad).
 
   GET    /api/calibraciones               lista (publica: transparencia)
   POST   /api/calibraciones/ajustar       evalua los modelos, NO guarda   (admin)
@@ -16,10 +17,11 @@ from flask import Blueprint, g, jsonify, request
 import config
 from calibracion import (
     METRICAS_CALIBRABLES,
-    MODELOS,
+    METRICAS_PM,
     ErrorCalibracion,
     calibrar_desde_csv,
     guardar,
+    modelos_de,
 )
 from db import get_connection
 from seguridad import registrar, requiere_rol
@@ -49,7 +51,7 @@ def _leer_parametros():
     texto_csv = datos.get("csv") or ""
 
     if metrica not in METRICAS_CALIBRABLES:
-        return None, "La metrica tiene que ser pm25 o pm10."
+        return None, f"La metrica tiene que ser una de: {', '.join(METRICAS_CALIBRABLES)}."
     if len(texto_csv.encode("utf-8")) > MAX_CSV_BYTES:
         return None, "El CSV supera los 2 MB."
     try:
@@ -62,6 +64,8 @@ def _leer_parametros():
         return None, "Parametros numericos invalidos."
     if not 5 <= ventana_min <= 1440:
         return None, "La ventana tiene que estar entre 5 y 1440 minutos."
+    if metrica not in METRICAS_PM:
+        hr_max = None  # el filtro por humedad es solo para PM
     if hr_max is not None and not 30 <= hr_max <= 100:
         return None, "El limite de humedad tiene que estar entre 30 y 100 %."
 
@@ -131,8 +135,10 @@ def crear():
         return _error(error)
 
     modelo = p["datos"].get("modelo")
-    if modelo not in MODELOS:
-        return _error("El modelo tiene que ser 'lineal' o 'humedad'.")
+    if modelo not in modelos_de(p["metrica"]):
+        return _error(
+            f"Para {p['metrica']} el modelo tiene que ser: {', '.join(modelos_de(p['metrica']))}."
+        )
     notas = (p["datos"].get("notas") or "").strip()[:500] or None
 
     try:
