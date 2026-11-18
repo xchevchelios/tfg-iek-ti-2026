@@ -32,6 +32,12 @@ MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "estaciones/+/data")
 # Resumen de cada ronda que publica el gateway (ver rondas.py). Dejarlo vacio
 # (MQTT_TOPIC_RONDAS=) apaga el registro sin tocar codigo.
 MQTT_TOPIC_RONDAS = os.environ.get("MQTT_TOPIC_RONDAS", "gateway/estado/aplicado").strip()
+# La ingesta republica cada medicion con PM calibrado en este topic; el
+# dashboard en vivo se suscribe aca y no a /data. '{estacion}' se reemplaza por
+# el id. Dejarlo vacio (MQTT_TOPIC_CALIBRADO=) apaga la republicacion.
+MQTT_TOPIC_CALIBRADO = os.environ.get(
+    "MQTT_TOPIC_CALIBRADO", "estaciones/{estacion}/calibrado"
+).strip()
 MQTT_USER = os.environ.get("MQTT_USER", "")
 MQTT_PASS = os.environ.get("MQTT_PASS", "")
 

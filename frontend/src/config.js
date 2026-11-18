@@ -20,8 +20,13 @@ export const MQTT_URL = import.meta.env.VITE_MQTT_URL;
 export const MQTT_USER = import.meta.env.VITE_MQTT_USER;
 export const MQTT_PASS = import.meta.env.VITE_MQTT_PASS;
 
-/** Topic al que se suscribe el dashboard. El '+' es el id de estacion. */
-export const MQTT_TOPIC = 'estaciones/+/data';
+/**
+ * Topic al que se suscribe el dashboard. El '+' es el id de estacion.
+ * No es estaciones/+/data (lo que publica el gateway) sino la copia que
+ * republica la ingesta con PM2.5/PM10 calibrados: asi lo que se ve en vivo
+ * coincide con lo que devuelve la API para el historial.
+ */
+export const MQTT_TOPIC = import.meta.env.VITE_MQTT_TOPIC ?? 'estaciones/+/calibrado';
 
 /** Vista inicial del mapa. */
 export const MAPA_CENTRO = (import.meta.env.VITE_MAPA_CENTRO ?? '-25.3345,-57.5150')

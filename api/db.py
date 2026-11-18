@@ -3,6 +3,7 @@ import re
 import sqlite3
 from datetime import datetime, timezone
 
+from calibracion import crear_tabla as crear_tabla_calibraciones
 from config import DB_PATH
 
 METRICAS = ("pm25", "pm10", "temperatura", "humedad")
@@ -193,6 +194,9 @@ def init_db():
             )
             """
         )
+
+        # --- Calibracion contra equipo de referencia (ver calibracion.py) ---
+        crear_tabla_calibraciones(conn)
 
         conn.commit()
 

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request
 
 import config
+from calibracion import METRICAS_CALIBRABLES, cargar_calibrador
 from db import METRICAS, get_connection
 
 bp = Blueprint("mediciones", __name__, url_prefix="/api")
@@ -28,6 +29,11 @@ def _texto_utc(momento):
     return momento.strftime(FORMATO_TS)
 
 
+def _quiere_crudo():
+    """?crudo=1 devuelve lo que midio el sensor, sin calibracion."""
+    return request.args.get("crudo", "").lower() in {"1", "true", "si"}
+
+
 @bp.get("/mediciones/ultimas")
 def ultimas():
     """Ultimas N mediciones de cada estacion activa, agrupadas por estacion.
@@ -40,6 +46,7 @@ def ultimas():
     except ValueError:
         return jsonify({"error": "'limite' tiene que ser un numero entero."}), 400
     limite = max(1, min(limite, LIMITE_MAXIMO))
+    crudo = _quiere_crudo()
 
     with get_connection() as conn:
         estaciones = [
@@ -48,6 +55,7 @@ def ultimas():
                 "SELECT id FROM estaciones WHERE activa = 1 ORDER BY id ASC"
             )
         ]
+        calibrador = None if crudo else cargar_calibrador(conn, estaciones)
 
         resultado = {}
         for station_id in estaciones:
@@ -63,7 +71,12 @@ def ultimas():
             ).fetchall()
             # Se invierte para entregar de mas antigua a mas reciente, que es
             # el orden en que los graficos las dibujan.
-            resultado[station_id] = [dict(f) for f in reversed(filas)]
+            filas = [dict(f) for f in reversed(filas)]
+            if calibrador:
+                # pm25/pm10 pasan a ser los calibrados; el crudo viaja en
+                # pm25_crudo/pm10_crudo para que siempre se pueda comparar.
+                filas = [calibrador.calibrar_fila(station_id, f) for f in filas]
+            resultado[station_id] = filas
 
     return jsonify(resultado)
 
@@ -122,8 +135,9 @@ def historial():
             400,
         )
 
+    # La humedad se trae siempre: el modelo de calibracion con HR la necesita.
     sql = f"""
-        SELECT timestamp, {metrica}
+        SELECT timestamp, {metrica} AS valor, humedad
         FROM mediciones
         WHERE station_id = ? AND timestamp BETWEEN ? AND ?
         ORDER BY timestamp ASC
@@ -131,9 +145,21 @@ def historial():
 
     with get_connection() as conn:
         filas = conn.execute(sql, (station_id, desde, hasta)).fetchall()
+        calibrar = metrica in METRICAS_CALIBRABLES and not _quiere_crudo()
+        calibrador = cargar_calibrador(conn, [station_id]) if calibrar else None
 
-    # Formato {x, y} que consume Chart.js directamente.
-    return jsonify([{"x": f["timestamp"], "y": f[metrica]} for f in filas])
+    # Formato {x, y} que consume Chart.js directamente. Si la metrica se
+    # calibra, 'y' es el valor calibrado y 'crudo' el del sensor.
+    if not calibrador:
+        return jsonify([{"x": f["timestamp"], "y": f["valor"]} for f in filas])
+
+    puntos = []
+    for f in filas:
+        valor, _ = calibrador.valor(
+            station_id, metrica, f["timestamp"], f["valor"], f["humedad"]
+        )
+        puntos.append({"x": f["timestamp"], "y": valor, "crudo": f["valor"]})
+    return jsonify(puntos)
 
 
 @bp.get("/datos_recientes")

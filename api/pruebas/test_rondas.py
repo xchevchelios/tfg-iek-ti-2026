@@ -42,7 +42,9 @@ def resumen(ronda, encendido_s, frescas=(1, 2), viejas=(), sin_respuesta=(), fal
 
 class BaseLimpia(unittest.TestCase):
     def setUp(self):
-        Path(os.environ["DB_PATH"]).unlink(missing_ok=True)
+        # db.DB_PATH y no os.environ: si otro archivo de pruebas cargo config
+        # antes, la base en uso es la suya.
+        Path(db.DB_PATH).unlink(missing_ok=True)
         db.init_db()
         self.conn = db.get_connection()
 

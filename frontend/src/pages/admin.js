@@ -28,6 +28,7 @@ import { conectarPanel, desconectarPanel } from '../api/mqttPanel.js';
 import { mostrarAviso } from '../ui/aviso.js';
 import { iniciarPestanias } from '../ui/pestanias.js';
 import { mostrarTerminal, ocultarTerminal, iniciarTerminal } from '../ui/terminalMqtt.js';
+import { iniciarVistaCalibracion, mostrarVistaCalibracion } from '../ui/vistaCalibracion.js';
 import { iniciarVistaGateway, mostrarVistaGateway } from '../ui/vistaGateway.js';
 import '../styles/base.css';
 import '../styles/admin.css';
@@ -114,6 +115,7 @@ function mostrarPanel(usuario) {
   const esAdmin = usuario.rol === 'admin';
   document.querySelector('[data-pestania="usuarios"]').hidden = !esAdmin;
   document.querySelector('[data-pestania="bitacora"]').hidden = !esAdmin;
+  document.querySelector('[data-pestania="calibracion"]').hidden = !esAdmin;
   pestanias.mostrarDesdeHash();
 }
 
@@ -131,6 +133,7 @@ function alMostrarPestania(nombre) {
   }
   if (nombre === 'gateway') mostrarVistaGateway();
   if (nombre === 'trafico') mostrarTerminal();
+  if (nombre === 'calibracion') mostrarVistaCalibracion();
 }
 
 const pestanias = iniciarPestanias(document.getElementById('pestanias'), {
@@ -138,6 +141,7 @@ const pestanias = iniciarPestanias(document.getElementById('pestanias'), {
   alMostrar: alMostrarPestania,
 });
 iniciarVistaGateway({ manejarError: (error) => manejarError(error) });
+iniciarVistaCalibracion({ manejarError: (error) => manejarError(error) });
 iniciarTerminal();
 
 // =================================================================

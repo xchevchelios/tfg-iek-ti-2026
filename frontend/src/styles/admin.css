@@ -285,3 +285,9 @@
 .term-linea--reporte .t-topic { color: #79c0ff; }
 .term-linea--lwt .t-topic { color: #d2a8ff; }
 .term-contador { margin: 8px 0 0; font-size: 0.85em; color: var(--texto-tenue); }
+
+/* ---------- Calibración ---------- */
+.cal-tabla td { white-space: nowrap; }
+.cal-mejor { color: var(--verde); font-weight: 600; }
+.cal-grafico { position: relative; height: 320px; max-width: 520px; margin: 12px 0; }
+.celda-formula { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 0.88em; white-space: nowrap; }

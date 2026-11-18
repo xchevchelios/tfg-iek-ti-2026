@@ -19,6 +19,8 @@ topic read gateway/#
 # --- USUARIO PÚBLICO / FRONTEND WEB ---
 user web_publico
 topic read estaciones/+/data
+# Mediciones con PM calibrado, que republica la ingesta (ver api/calibracion.py).
+topic read estaciones/+/calibrado
 
 # web_publico NO tiene ninguna regla sobre gateway/#: sus credenciales viajan
 # en el JavaScript del sitio, asi que cualquiera podria reconfigurar el gateway

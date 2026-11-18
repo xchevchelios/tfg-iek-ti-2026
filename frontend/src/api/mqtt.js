@@ -55,7 +55,7 @@ export function conectarMqtt({ alRecibir, alCambiarEstado = () => {} }) {
     // interesa lo que llega en vivo. (Mismo criterio que el servicio de ingesta.)
     if (paquete?.retain) return;
     try {
-      // 'estaciones/<id>/data'
+      // 'estaciones/<id>/calibrado'
       const estacionId = topic.split('/')[1];
       if (!estacionId) return;
       alRecibir(estacionId, JSON.parse(payload.toString()));

@@ -13,6 +13,7 @@ import sys
 import paho.mqtt.client as mqtt
 
 import config
+from calibracion import cargar_calibrador
 from db import (
     get_connection,
     init_db,
@@ -107,12 +108,39 @@ def on_message(client, userdata, msg):
             )
             conn.commit()
 
+            calibrador = cargar_calibrador(conn, [station_id])
+
         log.info("Medicion de %s guardada (%s)", station_id, timestamp)
+        _publicar_calibrado(client, station_id, datos, calibrador)
 
     except json.JSONDecodeError:
         log.warning("Payload no es JSON valido: %r", msg.payload[:200])
     except Exception:
         log.exception("Error procesando el mensaje de %s", msg.topic)
+
+
+def _publicar_calibrado(client, station_id, datos, calibrador):
+    """Republica la medicion con PM calibrado para el dashboard en vivo.
+
+    La formula vive en un solo lugar (Python): el navegador no sabe nada de
+    calibracion, y lo que ve en vivo coincide con lo que despues devuelve la
+    API para el historial. Sin calibracion vigente sale igual al crudo, asi que
+    el dashboard funciona igual haya o no calibraciones.
+
+    Un fallo aca no afecta a la medicion, que ya quedo guardada.
+    """
+    if not config.MQTT_TOPIC_CALIBRADO:
+        return
+    try:
+        salida = calibrador.calibrar_fila(station_id, datos)
+        client.publish(
+            config.MQTT_TOPIC_CALIBRADO.format(estacion=station_id),
+            json.dumps(salida),
+            qos=0,
+            retain=False,  # el dashboard descarta retenidos de todas formas
+        )
+    except Exception:
+        log.exception("No se pudo republicar la medicion calibrada de %s", station_id)
 
 
 def _guardar_ronda(msg):

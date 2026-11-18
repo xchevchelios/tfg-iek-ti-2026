@@ -12,6 +12,7 @@ from flask_cors import CORS
 import config
 from db import init_db
 from routes.auth import bp as bp_auth
+from routes.calibracion import bp as bp_calibracion
 from routes.estaciones import bp as bp_estaciones
 from routes.gateway import bp as bp_gateway
 from routes.mediciones import bp as bp_mediciones
@@ -49,6 +50,7 @@ def create_app():
     app.register_blueprint(bp_estaciones)
     app.register_blueprint(bp_gateway)
     app.register_blueprint(bp_mediciones)
+    app.register_blueprint(bp_calibracion)
 
     @app.get("/api/salud")
     def salud():

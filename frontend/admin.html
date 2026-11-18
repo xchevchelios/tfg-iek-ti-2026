@@ -41,6 +41,7 @@
         <button type="button" role="tab" data-pestania="estaciones">Estaciones</button>
         <button type="button" role="tab" data-pestania="gateway">Gateway</button>
         <button type="button" role="tab" data-pestania="trafico">Tráfico MQTT</button>
+        <button type="button" role="tab" data-pestania="calibracion" hidden>Calibración</button>
         <button type="button" role="tab" data-pestania="usuarios" hidden>Usuarios</button>
         <button type="button" role="tab" data-pestania="bitacora" hidden>Bitácora</button>
       </nav>
@@ -209,6 +210,111 @@
           Se conservan los últimos 500 mensajes.
         </p>
       </section>
+
+      <!-- Solo para el rol admin -->
+      <div id="seccion-calibracion" data-panel="calibracion" role="tabpanel" hidden>
+      <section class="panel">
+        <h2 class="panel__titulo">Nueva calibración</h2>
+        <form id="form-calibracion" class="formulario formulario--grilla">
+          <div class="campo-grupo">
+            <label for="cal-estacion">Estación co-ubicada</label>
+            <select id="cal-estacion" name="estacion" required></select>
+            <small>Donde estuvo el equipo de referencia</small>
+          </div>
+          <div class="campo-grupo">
+            <label for="cal-metrica">Métrica</label>
+            <select id="cal-metrica" name="metrica">
+              <option value="pm25">PM2.5</option>
+              <option value="pm10">PM10</option>
+            </select>
+          </div>
+          <div class="campo-grupo">
+            <label for="cal-archivo">CSV de la referencia</label>
+            <input id="cal-archivo" name="archivo" type="file" accept=".csv,.txt,text/csv" required>
+            <small>Columnas: timestamp, pm25 y/o pm10 (µg/m³)</small>
+          </div>
+          <div class="campo-grupo">
+            <label for="cal-zona">Hora del CSV</label>
+            <select id="cal-zona" name="utc_offset_horas">
+              <option value="">Local (UTC−3)</option>
+              <option value="0">UTC</option>
+            </select>
+            <small>Solo si las fechas no traen zona</small>
+          </div>
+          <div class="campo-grupo">
+            <label for="cal-ventana">Ventana de promedio</label>
+            <select id="cal-ventana" name="ventana_min">
+              <option value="60">1 hora</option>
+              <option value="30">30 min</option>
+              <option value="15">15 min</option>
+              <option value="1440">24 horas</option>
+            </select>
+          </div>
+          <div class="campo-grupo">
+            <label for="cal-hr">Descartar HR mayor a</label>
+            <input id="cal-hr" name="hr_max" type="number" min="30" max="100" step="1" value="80">
+            <small>% — el SDS011 no es confiable con humedad alta</small>
+          </div>
+          <div class="campo-grupo campo-grupo--accion">
+            <button type="submit">Ajustar</button>
+          </div>
+        </form>
+
+        <div id="cal-resultado" hidden>
+          <p id="cal-resumen" class="nota"></p>
+          <div class="tabla-scroll">
+            <table class="tabla cal-tabla">
+              <thead>
+                <tr>
+                  <th>Modelo</th><th>Coeficientes</th><th>R²</th>
+                  <th>RMSE</th><th>MAE</th><th>Sesgo</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="cal-modelos"></tbody>
+            </table>
+          </div>
+          <p id="cal-tipo-validacion" class="nota"></p>
+          <div class="cal-grafico"><canvas id="cal-dispersion" aria-label="Dispersión sensor contra referencia"></canvas></div>
+          <form id="form-cal-guardar" class="formulario formulario--grilla">
+            <div class="campo-grupo">
+              <label for="cal-desde">Vigente desde</label>
+              <input id="cal-desde" name="valida_desde" type="datetime-local">
+              <small>Vacío = todo el historial</small>
+            </div>
+            <div class="campo-grupo">
+              <label for="cal-notas">Notas</label>
+              <input id="cal-notas" name="notas" maxlength="500" placeholder="Equipo, lugar, condiciones">
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel__titulo">Calibraciones</h2>
+        <label class="term-check"><input type="checkbox" id="cal-ver-anuladas"> Mostrar anuladas</label>
+        <div class="tabla-scroll">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>#</th><th>Estación</th><th>Métrica</th><th>Modelo</th>
+                <th>Fórmula</th><th>Vigente desde</th><th>Pares</th>
+                <th>RMSE crudo → calibrado</th><th>R²</th><th>Por</th><th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-calibraciones"></tbody>
+          </table>
+        </div>
+        <p id="estado-calibraciones" class="nota" hidden></p>
+        <p class="nota">
+          El dato crudo del sensor no se modifica nunca: la calibración se aplica
+          al consultar, en el historial, en las últimas lecturas y en el canal en
+          vivo. Cada medición usa la calibración vigente en su fecha. Anular una
+          calibración hace que vuelva a regir la anterior, o el valor crudo si no
+          había otra. Las métricas se calculan sobre el último tercio de las
+          ventanas, que no se usa para ajustar.
+        </p>
+      </section>
+      </div>
 
       <!-- Solo para el rol admin -->
       <section id="seccion-usuarios" class="panel" data-panel="usuarios" role="tabpanel" hidden>
