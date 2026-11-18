@@ -33,8 +33,10 @@ TOPIC_APLICADO = "gateway/estado/aplicado"   # lo que el gateway reporta haber a
 
 # Los mismos rangos y tiempos que firmware/gateway/planificador.h. El gestor
 # valida para dar un error claro; el firmware vuelve a validar igual.
-LIMITES = {"periodo_s": (60, 3600), "estabilizacion_s": (15, 60), "timeout_ms": (500, 5000)}
-POR_DEFECTO = {"periodo_s": 300, "estabilizacion_s": 30, "timeout_ms": 3000, "publicar": True}
+LIMITES = {"periodo_s": (60, 3600), "estabilizacion_s": (15, 60), "timeout_ms": (500, 5000),
+           "reintentos": (0, 10)}
+POR_DEFECTO = {"periodo_s": 300, "estabilizacion_s": 30, "timeout_ms": 3000, "publicar": True,
+               "reintentos": 10}
 MARGEN_MEDICION_MS = 2000
 PAUSA_ENTRE_NODOS_MS = 100
 VIDA_LASER_H = 8000          # vida util del laser del SDS011 segun su hoja de datos
@@ -558,9 +560,11 @@ def publicar_retenido(topic, carga):
 
 
 def duracion_maxima_ronda_s(p, n):
-    """Lo que tarda una ronda en el peor caso: ningun nodo responde."""
+    """Lo que tarda una ronda en el peor caso: ningun nodo responde a ninguno
+    de sus pedidos (el primero mas los reintentos)."""
+    pedidos = 1 + p.get("reintentos", POR_DEFECTO["reintentos"])
     return (p["estabilizacion_s"] * 1000 + MARGEN_MEDICION_MS
-            + n * (p["timeout_ms"] + PAUSA_ENTRE_NODOS_MS)) / 1000
+            + n * pedidos * (p["timeout_ms"] + PAUSA_ENTRE_NODOS_MS)) / 1000
 
 
 def validar_parametros(p, n):
@@ -577,7 +581,7 @@ def validar_parametros(p, n):
 
 
 def _parametros_de(datos):
-    """Los cuatro parametros a partir de un JSON parcial, completando con
+    """Los parametros a partir de un JSON parcial, completando con
     los valores por defecto."""
     p = dict(POR_DEFECTO)
     for clave in p:
@@ -591,12 +595,15 @@ def _texto_parametro(clave, valor):
         return "—"
     if clave == "publicar":
         return "sí" if valor else "no"
+    if clave == "reintentos":
+        return str(valor)
     return f"{valor} ms" if clave == "timeout_ms" else f"{valor} s"
 
 
-CAMPOS_EDITABLES = {"1": "periodo_s", "2": "estabilizacion_s", "3": "timeout_ms"}
+CAMPOS_EDITABLES = {"1": "periodo_s", "2": "estabilizacion_s", "3": "timeout_ms", "5": "reintentos"}
 ETIQUETAS = {"periodo_s": "Período", "estabilizacion_s": "Ventana del SDS011",
-             "timeout_ms": "Timeout por nodo", "publicar": "Publicar"}
+             "timeout_ms": "Timeout por nodo", "publicar": "Publicar",
+             "reintentos": "Reintentos por nodo"}
 
 
 def ver_parametros():
@@ -613,7 +620,7 @@ def ver_parametros():
         base = _parametros_de(deseado_json or aplicado_json)
 
         print(f"\n{GRIS} {celda('', 20)} {celda('DESEADO', 12)} APLICADO POR EL GATEWAY{RESET}")
-        for clave in ("periodo_s", "estabilizacion_s", "timeout_ms", "publicar"):
+        for clave in ("periodo_s", "estabilizacion_s", "timeout_ms", "reintentos", "publicar"):
             deseado = deseado_json.get(clave) if deseado_json else None
             aplicado = aplicado_json.get(clave) if aplicado_json else None
             difiere = deseado is not None and aplicado is not None and deseado != aplicado
@@ -622,7 +629,7 @@ def ver_parametros():
                   f"{_texto_parametro(clave, aplicado)}{marca}")
         if deseado_json is None:
             print(f"\n {GRIS}No hay parámetros publicados: el gateway usa los que tiene en su NVS\n"
-                  f" o los de fábrica (300 s, 30 s, 3000 ms, publicar).{RESET}")
+                  f" o los de fábrica (300 s, 30 s, 3000 ms, 10 reintentos, publicar).{RESET}")
         if aplicado_json is None:
             print(f" {GRIS}El gateway no reporta lo aplicado: firmware v1 o sin conexión.{RESET}")
         rechazo = ((aplicado_json or {}).get("rechazos") or {}).get("parametros")
@@ -631,7 +638,8 @@ def ver_parametros():
 
         _mostrar_consecuencias(base, n)
 
-        print(f"\n{BOLD}Cambiar:{RESET} 1 período · 2 ventana · 3 timeout · 4 publicar sí/no")
+        print(f"\n{BOLD}Cambiar:{RESET} 1 período · 2 ventana · 3 timeout · 4 publicar sí/no · "
+              "5 reintentos")
         opcion = input("Opción (Enter para volver): ").strip()
         if not opcion:
             return True

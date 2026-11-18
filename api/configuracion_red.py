@@ -109,17 +109,23 @@ LIMITES = {
     "periodo_s": (60, 3600),
     "estabilizacion_s": (15, 60),
     "timeout_ms": (500, 5000),
+    # Pedidos extra a un nodo que no contesta antes de pasar al siguiente
+    # (firmware 2.4.0 en adelante; los anteriores ignoran el campo).
+    "reintentos": (0, 10),
 }
-POR_DEFECTO = {"periodo_s": 300, "estabilizacion_s": 30, "timeout_ms": 3000, "publicar": True}
+POR_DEFECTO = {"periodo_s": 300, "estabilizacion_s": 30, "timeout_ms": 3000, "publicar": True,
+               "reintentos": 10}
 MARGEN_MEDICION_MS = 2000
 PAUSA_ENTRE_NODOS_MS = 100
 VIDA_LASER_H = 8000   # vida util del laser del SDS011 segun su hoja de datos
 
 
 def duracion_maxima_ronda_s(p, n):
-    """Lo que tarda una ronda en el peor caso: ningun nodo responde."""
+    """Lo que tarda una ronda en el peor caso: ningun nodo responde a ninguno
+    de sus pedidos (el primero mas los reintentos)."""
+    pedidos = 1 + p.get("reintentos", POR_DEFECTO["reintentos"])
     return (p["estabilizacion_s"] * 1000 + MARGEN_MEDICION_MS
-            + n * (p["timeout_ms"] + PAUSA_ENTRE_NODOS_MS)) / 1000
+            + n * pedidos * (p["timeout_ms"] + PAUSA_ENTRE_NODOS_MS)) / 1000
 
 
 def validar_parametros(p, n):

@@ -22,8 +22,8 @@ const TOPICS = {
   parametros: 'gateway/config/parametros',
   aplicado: 'gateway/estado/aplicado',
 };
-const CAMPOS = ['periodo_s', 'estabilizacion_s', 'timeout_ms', 'publicar'];
-const POR_DEFECTO = { periodo_s: 300, estabilizacion_s: 30, timeout_ms: 3000, publicar: true };
+const CAMPOS = ['periodo_s', 'estabilizacion_s', 'timeout_ms', 'reintentos', 'publicar'];
+const POR_DEFECTO = { periodo_s: 300, estabilizacion_s: 30, timeout_ms: 3000, publicar: true, reintentos: 10 };
 
 const $ = (id) => document.getElementById(id);
 const formulario = () => $('gw-form');
@@ -76,6 +76,7 @@ function completar(datos) {
 function textoParametro(clave, valor) {
   if (valor === undefined || valor === null) return '—';
   if (clave === 'publicar') return valor ? 'sí' : 'no';
+  if (clave === 'reintentos') return String(valor);
   return clave === 'timeout_ms' ? `${valor} ms` : `${valor} s`;
 }
 
@@ -239,6 +240,7 @@ function rellenarFormulario() {
   f.periodo_s.value = p.periodo_s;
   f.estabilizacion_s.value = p.estabilizacion_s;
   f.timeout_ms.value = p.timeout_ms;
+  f.reintentos.value = p.reintentos;
   f.publicar.checked = Boolean(p.publicar);
 }
 
@@ -249,20 +251,26 @@ function leerFormulario() {
     periodo_s: entero(f.periodo_s),
     estabilizacion_s: entero(f.estabilizacion_s),
     timeout_ms: entero(f.timeout_ms),
+    reintentos: entero(f.reintentos),
     publicar: f.publicar.checked,
   };
 }
 
+/** Peor caso: ningun nodo responde a ninguno de sus pedidos (1 + reintentos). */
 function peorRonda(p, n) {
   const margen = limites?.margen_medicion_ms ?? 2000;
   const pausa = limites?.pausa_entre_nodos_ms ?? 100;
-  return (p.estabilizacion_s * 1000 + margen + n * (p.timeout_ms + pausa)) / 1000;
+  const pedidos = 1 + (p.reintentos ?? POR_DEFECTO.reintentos);
+  return (p.estabilizacion_s * 1000 + margen + n * pedidos * (p.timeout_ms + pausa)) / 1000;
 }
 
 /** La misma validacion que el servidor, para avisar antes de enviar. */
 function validar(p) {
   const rangos = limites?.limites ?? {};
-  const nombres = { periodo_s: 'El período', estabilizacion_s: 'La ventana', timeout_ms: 'El timeout' };
+  const nombres = {
+    periodo_s: 'El período', estabilizacion_s: 'La ventana', timeout_ms: 'El timeout',
+    reintentos: 'Los reintentos',
+  };
   for (const [clave, { min, max }] of Object.entries(rangos)) {
     if (!Number.isInteger(p[clave])) return `${nombres[clave]} tiene que ser un número entero.`;
     if (p[clave] < min || p[clave] > max) return `${nombres[clave]} tiene que estar entre ${min} y ${max}.`;
@@ -289,7 +297,7 @@ function renderPrevia() {
     const encendido = p.estabilizacion_s / p.periodo_s;
     const vidaH = limites?.vida_laser_h ?? 8000;
     const n = nodosBase.length;
-    const peor = Number.isFinite(p.timeout_ms) ? peorRonda(p, n) : NaN;
+    const peor = Number.isFinite(p.timeout_ms) && Number.isFinite(p.reintentos) ? peorRonda(p, n) : NaN;
     const items = [
       ['Láser encendido', `${numero(encendido * 100)} % del tiempo`],
       ['Vida estimada del láser', `≈ ${numero(vidaH / encendido / 8760)} años`],

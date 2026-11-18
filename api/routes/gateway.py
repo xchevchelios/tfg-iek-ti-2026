@@ -46,6 +46,9 @@ def guardar_parametros():
     if not isinstance(datos, dict):
         return jsonify({"error": "Se esperaba un objeto JSON."}), 400
 
+    # reintentos es posterior al resto: si un panel viejo no lo manda, va el
+    # valor por defecto en vez de rechazar el cambio.
+    datos.setdefault("reintentos", POR_DEFECTO["reintentos"])
     faltan = [clave for clave in POR_DEFECTO if clave not in datos]
     if faltan:
         return jsonify({"error": f"Faltan campos: {', '.join(faltan)}."}), 400
@@ -64,7 +67,8 @@ def guardar_parametros():
     registrar(
         "parametros_gateway", "gateway",
         f"periodo {parametros['periodo_s']} s, ventana {parametros['estabilizacion_s']} s, "
-        f"timeout {parametros['timeout_ms']} ms, publicar {'si' if parametros['publicar'] else 'no'}",
+        f"timeout {parametros['timeout_ms']} ms, reintentos {parametros['reintentos']}, "
+        f"publicar {'si' if parametros['publicar'] else 'no'}",
     )
     return jsonify({"publicado": True, "parametros": parametros})
 
