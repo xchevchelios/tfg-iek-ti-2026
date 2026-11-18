@@ -60,6 +60,24 @@ class BaseLimpia(unittest.TestCase):
         return self.conn.execute(f"SELECT COUNT(*) FROM {tabla}").fetchone()[0]
 
 
+class MigracionRssi(unittest.TestCase):
+    def test_base_vieja_gana_la_columna(self):
+        Path(db.DB_PATH).unlink(missing_ok=True)
+        with db.get_connection() as conn:
+            conn.execute(
+                """CREATE TABLE rondas_nodo (ronda_id INTEGER NOT NULL, direccion INTEGER NOT NULL,
+                   desenlace TEXT NOT NULL, sensor_ok INTEGER, PRIMARY KEY (ronda_id, direccion))"""
+            )
+            conn.execute("INSERT INTO rondas_nodo VALUES (1, 1, 'fresca', 1)")
+            conn.commit()
+        db.init_db()
+        db.init_db()   # idempotente
+        with db.get_connection() as conn:
+            columnas = [c[1] for c in conn.execute("PRAGMA table_info(rondas_nodo)")]
+            self.assertIn("rssi", columnas)
+            self.assertEqual(conn.execute("SELECT rssi FROM rondas_nodo").fetchone()[0], None)
+
+
 class GuardarResumen(BaseLimpia):
     def test_guarda_desenlace_de_cada_nodo(self):
         self.guardar(resumen(100, 600, frescas=[1], sin_respuesta=[2]), T0)
@@ -100,6 +118,25 @@ class GuardarResumen(BaseLimpia):
         self.guardar(resumen(100, 600, frescas=[1], nodos=[1, 2]), T0)
         fila = self.conn.execute("SELECT desenlace FROM rondas_nodo WHERE direccion = 2").fetchone()
         self.assertEqual(fila[0], "sin_desenlace")
+
+    def test_guarda_rssi_de_los_que_respondieron(self):
+        carga = resumen(100, 600, frescas=[1], viejas=[2], sin_respuesta=[3], nodos=(1, 2, 3))
+        # El gateway solo informa RSSI de quien respondio; si viniera uno de un
+        # nodo sin respuesta igual se ignora.
+        carga["ultima_ronda"]["rssi"] = {"1": -88, "2": -101, "3": -90}
+        carga["lora_rssi"] = True
+        self.guardar(carga, T0)
+        filas = dict(self.conn.execute("SELECT direccion, rssi FROM rondas_nodo"))
+        self.assertEqual(filas, {1: -88, 2: -101, 3: None})
+
+    def test_rssi_ausente_o_raro_queda_null(self):
+        # Firmware anterior a 2.3.0: no manda rssi.
+        self.guardar(resumen(100, 600), T0)
+        carga = resumen(101, 900)
+        carga["ultima_ronda"]["rssi"] = {"1": "fuerte", "x": -80, "2": 12}
+        self.guardar(carga, T0 + timedelta(minutes=5))
+        valores = [r[0] for r in self.conn.execute("SELECT rssi FROM rondas_nodo")]
+        self.assertEqual(valores, [None] * 4)
 
     def test_resumen_invalido(self):
         for carga in ({}, {"ronda": 1}, resumen(0, 10), resumen(70000, 10),

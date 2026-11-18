@@ -39,6 +39,10 @@ DESENLACES = (
 
 RONDA_MAX = 65535
 
+# Piso del RSSI que se acepta (dBm). El E22 entrega -(256 - byte), o sea
+# -255 a -1; por debajo de esto no hay enlace LoRa posible.
+RSSI_MIN = -200
+
 
 class ResumenInvalido(ValueError):
     pass
@@ -136,6 +140,7 @@ def guardar_resumen(conn, carga, ahora=None):
     ronda_id = cursor.lastrowid
 
     fallando = {d for d in ultima.get("sensor_fallando") or [] if _es_entero(d)}
+    rssi = _rssi_por_direccion(ultima.get("rssi"))
     filas = []
     vistos = set()
     for clave, desenlace in DESENLACES:
@@ -144,23 +149,42 @@ def guardar_resumen(conn, carga, ahora=None):
                 continue
             vistos.add(direccion)
             sensor_ok = int(direccion not in fallando) if desenlace == "fresca" else None
-            filas.append((ronda_id, direccion, desenlace, sensor_ok))
+            # Si respondio (fresca o vieja) el enlace anduvo y hay RSSI.
+            rssi_nodo = rssi.get(direccion) if desenlace in ("fresca", "vieja") else None
+            filas.append((ronda_id, direccion, desenlace, sensor_ok, rssi_nodo))
 
     # Un nodo configurado que no figura en ninguna lista no deberia existir
     # (el gateway cierra la ronda con todos resueltos), pero si aparece se
     # registra en vez de perderlo en silencio.
     for direccion in nodos:
         if direccion not in vistos:
-            filas.append((ronda_id, direccion, "sin_desenlace", None))
+            filas.append((ronda_id, direccion, "sin_desenlace", None, None))
 
     conn.executemany(
         """
-        INSERT INTO rondas_nodo (ronda_id, direccion, desenlace, sensor_ok)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO rondas_nodo (ronda_id, direccion, desenlace, sensor_ok, rssi)
+        VALUES (?, ?, ?, ?, ?)
         """,
         filas,
     )
     return ronda_id
+
+
+def _rssi_por_direccion(valor):
+    """{"1": -88, "2": -95} del reporte -> {1: -88, 2: -95}.
+
+    Descarta en silencio lo que no tenga forma de RSSI: el dato es
+    informativo y un valor raro no justifica perder la ronda entera.
+    """
+    if not isinstance(valor, dict):
+        return {}
+    salida = {}
+    for clave, dbm in valor.items():
+        if not (isinstance(clave, str) and clave.isdigit()):
+            continue
+        if _es_entero(dbm) and RSSI_MIN <= dbm < 0:
+            salida[int(clave)] = dbm
+    return salida
 
 
 def rondas_perdidas(anterior, siguiente):

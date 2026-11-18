@@ -182,6 +182,8 @@ def init_db():
             "CREATE INDEX IF NOT EXISTS idx_rondas_gateway_recibida ON rondas_gateway (recibida)"
         )
         # sensor_ok solo tiene sentido si el dato llego (desenlace 'fresca').
+        # rssi: dBm con que el gateway recibio la respuesta del nodo (firmware
+        # 2.3.0 en adelante). NULL si no respondio o si el gateway no lo informa.
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS rondas_nodo (
@@ -190,10 +192,15 @@ def init_db():
                 desenlace  TEXT NOT NULL CHECK (desenlace IN
                                ('fresca', 'vieja', 'sin_respuesta', 'sin_desenlace')),
                 sensor_ok  INTEGER,
+                rssi       INTEGER,
                 PRIMARY KEY (ronda_id, direccion)
             )
             """
         )
+        try:
+            conn.execute("ALTER TABLE rondas_nodo ADD COLUMN rssi INTEGER")
+        except sqlite3.OperationalError:
+            pass  # la columna ya existia (o la tabla se acaba de crear con ella)
 
         # --- Calibracion contra equipo de referencia (ver calibracion.py) ---
         crear_tabla_calibraciones(conn)
