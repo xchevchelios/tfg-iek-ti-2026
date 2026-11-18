@@ -143,6 +143,7 @@ function renderEstado() {
   dato(dl, 'Última ronda',
     `${frescas.length} de ${total} nodos con dato · ${numero((ultima.duracion_ms ?? 0) / 1000)} s`,
     total && frescas.length === total ? 'gw-ok' : frescas.length ? 'gw-aviso' : 'gw-mal');
+  renderRssi(dl, r, ultima);
   dato(dl, 'Reporte',
     aplicado.mensaje.retenido
       ? 'el último guardado en el broker'
@@ -155,6 +156,24 @@ function renderEstado() {
   if (r.descartadas) alerta(lista, `${r.descartadas} mediciones descartadas desde el encendido (sin red y con la memoria llena).`);
   Object.entries(r.rechazos ?? {}).forEach(([que, motivo]) =>
     alerta(lista, `Rechazó la configuración de ${que}: ${motivo}`, 'error'));
+}
+
+/**
+ * RSSI LoRa de cada nodo en la ultima ronda. Lo informa el firmware 2.3.0
+ * en adelante: `lora_rssi` dice si el modulo del gateway lo entrega y
+ * `ultima_ronda.rssi` trae {direccion: dBm} de los que respondieron.
+ */
+function renderRssi(dl, r, ultima) {
+  if (r.lora_rssi === undefined) return;   // firmware anterior: no lo informa
+  if (!r.lora_rssi) {
+    dato(dl, 'RSSI LoRa', 'no disponible: el módulo LoRa del gateway no respondió a la configuración', 'gw-aviso');
+    return;
+  }
+  const rssi = ultima.rssi ?? {};
+  const texto = (r.nodos ?? [])
+    .map((n) => `nodo ${n}: ${Number.isFinite(rssi[n]) ? `${rssi[n]} dBm` : 'sin respuesta'}`)
+    .join(' · ');
+  dato(dl, 'RSSI LoRa', texto || '—');
 }
 
 function renderNodos() {

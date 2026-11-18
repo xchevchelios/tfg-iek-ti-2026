@@ -284,6 +284,7 @@
 .term-linea--config .t-topic { color: #e3b341; }
 .term-linea--reporte .t-topic { color: #79c0ff; }
 .term-linea--lwt .t-topic { color: #d2a8ff; }
+.t-rssi { color: #56d4dd; font-weight: 600; }
 .term-contador { margin: 8px 0 0; font-size: 0.85em; color: var(--texto-tenue); }
 
 /* ---------- Calibración ---------- */

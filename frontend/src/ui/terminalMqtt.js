@@ -40,6 +40,16 @@ function textoCarga(texto) {
   return salida.length > MAX_CARGA ? `${salida.slice(0, MAX_CARGA)}…` : salida;
 }
 
+/** RSSI LoRa (dBm) que el gateway agrega a cada medicion, si viene. */
+function rssiDe(texto) {
+  try {
+    const rssi = JSON.parse(texto)?.rssi;
+    return Number.isFinite(rssi) ? rssi : null;
+  } catch {
+    return null;
+  }
+}
+
 function pasaFiltro(mensaje) {
   const filtro = $('term-filtro').value.trim().toLowerCase();
   return !filtro || mensaje.topic.toLowerCase().includes(filtro);
@@ -66,7 +76,16 @@ function linea(mensaje) {
   carga.className = 't-carga';
   carga.textContent = textoCarga(mensaje.texto);
 
-  div.append(hora, ' ', ret, ' ', topic, ' ', carga);
+  div.append(hora, ' ', ret, ' ', topic, ' ');
+  const rssi = tipo(mensaje.topic) === 'dato' ? rssiDe(mensaje.texto) : null;
+  if (rssi !== null) {
+    const etiqueta = document.createElement('span');
+    etiqueta.className = 't-rssi';
+    etiqueta.textContent = `[${rssi} dBm]`;
+    etiqueta.title = 'RSSI LoRa con que el gateway recibió esta medición';
+    div.append(etiqueta, ' ');
+  }
+  div.append(carga);
   return div;
 }
 
