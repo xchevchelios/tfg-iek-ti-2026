@@ -11,13 +11,18 @@ import Chart from 'chart.js/auto';
 import {
   ajustarCalibracion,
   anularCalibracion,
+  aplicarHumedadAlta,
   guardarCalibracion,
   listarCalibraciones,
 } from '../api/calibracion.js';
 import { listarEstaciones } from '../api/estaciones.js';
 import { mostrarAviso } from './aviso.js';
 
-const NOMBRES_MODELO = { lineal: 'Lineal', humedad: 'Lineal + humedad' };
+const NOMBRES_MODELO = {
+  lineal: 'Lineal',
+  humedad: 'Lineal + humedad',
+  humedad_exp: 'Humedad alta (FIUNA)',
+};
 const NOMBRES_METRICA = {
   pm25: 'PM2.5',
   pm10: 'PM10',
@@ -44,7 +49,8 @@ function num(valor, decimales = 2) {
   return valor === null || valor === undefined ? '—' : Number(valor).toFixed(decimales);
 }
 
-function formula({ a, b, c }) {
+function formula({ a, b, c, modelo }) {
+  if (modelo === 'humedad_exp') return `x ÷ e^(${a}·(HR−${b})) si HR > ${c} %`;
   const signo = (v) => (v < 0 ? '−' : '+');
   let texto = `${num(a, 2)} ${signo(b)} ${num(Math.abs(b), 3)}·x`;
   if (c) texto += ` ${signo(c)} ${num(Math.abs(c), 3)}·HR`;
@@ -323,9 +329,28 @@ async function cargarEstaciones() {
   }
 }
 
+async function humedadAlta() {
+  const estacion = $('cal-estacion').value;
+  if (!estacion) return;
+  const confirmado = window.confirm(
+    `Aplicar a ${estacion} la corrección por humedad alta de la red FIUNA ` +
+      '(PM2.5 y PM10):\n  x ÷ e^(0,014·(HR−40)) cuando la HR supera 80 %.\n\n' +
+      'Con humedad menor el valor no cambia. Usa la humedad ya calibrada de la estación.'
+  );
+  if (!confirmado) return;
+  try {
+    await aplicarHumedadAlta(estacion);
+    mostrarAviso('Corrección por humedad alta aplicada.', 'ok');
+    await cargarCalibraciones();
+  } catch (error) {
+    manejarError(error);
+  }
+}
+
 export function iniciarVistaCalibracion(opciones = {}) {
   if (opciones.manejarError) manejarError = opciones.manejarError;
   $('form-calibracion').addEventListener('submit', ajustar);
+  $('cal-humedad-alta').addEventListener('click', humedadAlta);
   // El descarte por humedad alta es solo para PM: con temperatura y humedad
   // interesa calibrar todo el rango.
   const alternarHr = () => {

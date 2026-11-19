@@ -63,6 +63,7 @@ function aplicarMedicion(estacionId, medicion) {
     agregarPunto(seccion.graficos[clave], etiqueta, medicion[clave]);
   }
   ultimaPorEstacion[estacionId] = medicion;
+  seccion.marcarHumedadAlta?.(Boolean(medicion.humedad_alta));
   return true;
 }
 

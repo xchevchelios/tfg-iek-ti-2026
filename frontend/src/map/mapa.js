@@ -109,6 +109,7 @@ function construirPopup(estacion, medicion) {
       ${fila('Temp.', medicion.temperatura, '°C')}
       ${fila('Humedad', medicion.humedad, '%')}
     </table>
+    ${medicion.humedad_alta ? '<div class="popup-aviso">Humedad alta: PM menos confiable</div>' : ''}
     <small>Última lectura: ${escapar(fecha)}</small>
   `;
 }

@@ -214,7 +214,8 @@ class TestNucleo(unittest.TestCase):
                               ).fetchone()[0]
         conn.execute("DROP TABLE calibraciones")
         conn.execute(sql_v1.replace("('pm25', 'pm10', 'temperatura', 'humedad')",
-                                    "('pm25', 'pm10')"))
+                                    "('pm25', 'pm10')")
+                     .replace("('lineal', 'humedad', 'humedad_exp')", "('lineal', 'humedad')"))
         conn.execute("INSERT INTO calibraciones (station_id, metrica, modelo, a, b, valida_desde, "
                      "ventana_min, n_pares, validacion, n_validacion, pares_json, creada_en) "
                      "VALUES ('e', 'pm25', 'lineal', 1, 2, 'x', 60, 3, 'en_muestra', 3, '[]', 'x')")
@@ -225,6 +226,43 @@ class TestNucleo(unittest.TestCase):
                      "VALUES ('e', 'humedad', 'lineal', 1, 2, 'x', 60, 3, 'en_muestra', 3, '[]', 'x')")
         calibracion.crear_tabla(conn)  # idempotente
         self.assertEqual(conn.execute("SELECT COUNT(*) FROM calibraciones").fetchone()[0], 2)
+
+    def test_humedad_exp_usa_hr_calibrada(self):
+        cal = calibracion.Calibrador([
+            {"id": 1, "station_id": "e", "metrica": "humedad", "modelo": "lineal", "a": 21.7,
+             "b": 1, "c": 0, "valida_desde": calibracion.DESDE_SIEMPRE},
+            {"id": 2, "station_id": "e", "metrica": "pm25", "modelo": "humedad_exp",
+             "a": 0.014, "b": 40, "c": 80, "valida_desde": calibracion.DESDE_SIEMPRE},
+        ])
+        ts = "2026-11-15T00:00:00Z"
+        # HR cruda 70 -> calibrada 91,7 -> se corrige
+        v, cid = cal.valor("e", "pm25", ts, 40.0, 70.0)
+        self.assertEqual(cid, 2)
+        self.assertAlmostEqual(v, round(40 / math.exp(0.014 * 51.7), 1))
+        # HR cruda 50 -> 71,7: por debajo del umbral, sin cambio
+        self.assertEqual(cal.valor("e", "pm25", ts, 40.0, 50.0), (40.0, 2))
+        # Sin HR no se aplica
+        self.assertEqual(cal.valor("e", "pm25", ts, 40.0, None), (40.0, None))
+        fila = cal.calibrar_fila("e", {"timestamp": ts, "pm25": 40.0, "humedad": 70.0})
+        self.assertTrue(fila["humedad_alta"])
+        self.assertFalse(cal.calibrar_fila("e", {"timestamp": ts, "pm25": 4.0,
+                                                 "humedad": 50.0})["humedad_alta"])
+
+    def test_migra_tabla_sin_humedad_exp(self):
+        import sqlite3
+        conn = sqlite3.connect(":memory:")
+        calibracion._crear_tabla_actual(conn)
+        sql = conn.execute("SELECT sql FROM sqlite_master WHERE name='calibraciones'").fetchone()[0]
+        conn.execute("DROP TABLE calibraciones")
+        conn.execute(sql.replace("('lineal', 'humedad', 'humedad_exp')", "('lineal', 'humedad')"))
+        conn.execute("INSERT INTO calibraciones (station_id, metrica, modelo, a, b, valida_desde, "
+                     "ventana_min, n_pares, validacion, n_validacion, pares_json, creada_en) "
+                     "VALUES ('e','humedad','lineal',21.7,1,'x',0,3,'en_muestra',3,'[]','x')")
+        calibracion.crear_tabla(conn)
+        calibracion.guardar_humedad_exp(conn, "e", "pm25")
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM calibraciones").fetchone()[0], 2)
+        with self.assertRaises(calibracion.ErrorCalibracion):
+            calibracion.guardar_humedad_exp(conn, "e", "humedad")
 
     def test_versionado_por_fecha(self):
         cal = calibracion.Calibrador([
@@ -308,6 +346,19 @@ class TestApi(unittest.TestCase):
         t_ref = _temp_ref(calibracion.parsear_ts(fila_t["timestamp"]))
         self.assertAlmostEqual(fila_t["temperatura"], t_ref, delta=0.3)
         self.cliente.delete(f"/api/calibraciones/{r.get_json()['id']}", headers=self.h)
+
+        # Correccion FIUNA por humedad alta: alta de PM2.5 y PM10 sin CSV.
+        r = self.cliente.post("/api/calibraciones/humedad-alta", json={"estacion": ESTACION},
+                              headers=self.h)
+        self.assertEqual(r.status_code, 201, r.get_json())
+        ids_exp = [c["id"] for c in r.get_json()]
+        self.assertEqual({c["modelo"] for c in r.get_json()}, {"humedad_exp"})
+        fila_exp = self.cliente.get("/api/mediciones/ultimas?limite=1").get_json()[ESTACION][-1]
+        self.assertIn("humedad_alta", fila_exp)
+        if fila_exp["humedad"] <= 80:
+            self.assertEqual(fila_exp["pm25"], fila_exp["pm25_crudo"])
+        for i in ids_exp:
+            self.cliente.delete(f"/api/calibraciones/{i}", headers=self.h)
 
         # Anular vuelve al crudo.
         r = self.cliente.delete(f"/api/calibraciones/{cal_id}", headers=self.h)

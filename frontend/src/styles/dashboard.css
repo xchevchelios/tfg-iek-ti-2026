@@ -48,3 +48,17 @@
 .popup-tabla { border-collapse: collapse; margin-bottom: 6px; }
 .popup-tabla th { text-align: left; padding-right: 12px; font-weight: 600; }
 .popup-tabla td { text-align: right; }
+
+/* Aviso de humedad alta (>= 80 %) en la ultima lectura de una estacion */
+.aviso-humedad {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #fff3cd;
+  color: #664d03;
+  font-size: 0.7em;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.popup-aviso { margin: 4px 0; color: #664d03; font-weight: 600; }

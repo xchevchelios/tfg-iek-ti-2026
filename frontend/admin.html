@@ -267,6 +267,16 @@
           </div>
         </form>
 
+        <div class="cal-fija">
+          <p class="nota">
+            <strong>Corrección por humedad alta (red FIUNA).</strong> No necesita CSV:
+            divide el PM2.5 y el PM10 por e^(0,014·(HR−40)) cuando la humedad
+            supera 80 %, que es cuando el SDS011 mide de más. Con humedad menor el
+            valor no cambia. Se aplica a la estación elegida arriba.
+          </p>
+          <button type="button" id="cal-humedad-alta">Aplicar corrección por humedad alta</button>
+        </div>
+
         <div id="cal-resultado" hidden>
           <p id="cal-resumen" class="nota"></p>
           <div class="tabla-scroll">

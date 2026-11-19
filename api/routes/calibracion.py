@@ -21,6 +21,7 @@ from calibracion import (
     ErrorCalibracion,
     calibrar_desde_csv,
     guardar,
+    guardar_humedad_exp,
     modelos_de,
 )
 from db import get_connection
@@ -188,3 +189,29 @@ def anular(cal_id):
 
     registrar("calibracion_anulada", fila["station_id"], f"#{cal_id} {fila['metrica']}")
     return jsonify({"id": cal_id, "anulada": True})
+
+
+@bp.post("/humedad-alta")
+@requiere_rol("admin")
+def humedad_alta():
+    """Da de alta la correccion FIUNA por humedad alta (PM2.5 y PM10) de una
+    estacion. Es un modelo fijo: no hace falta CSV de referencia."""
+    datos = request.get_json(silent=True) or {}
+    estacion = (datos.get("estacion") or "").strip()
+    with get_connection() as conn:
+        if not conn.execute("SELECT 1 FROM estaciones WHERE id = ?", (estacion,)).fetchone():
+            return _error("Estacion inexistente.")
+        try:
+            ids = [
+                guardar_humedad_exp(conn, estacion, metrica,
+                                    valida_desde=datos.get("valida_desde"), usuario=g.usuario)
+                for metrica in METRICAS_PM
+            ]
+        except ErrorCalibracion as exc:
+            return _error(str(exc))
+        conn.commit()
+        filas = conn.execute(
+            f"SELECT {COLUMNAS_LISTADO} FROM calibraciones WHERE id IN (?, ?)", ids
+        ).fetchall()
+    registrar("calibracion_alta", estacion, f"#{ids[0]} y #{ids[1]} humedad alta (FIUNA)")
+    return jsonify([{**dict(f), "anulada": False} for f in filas]), 201

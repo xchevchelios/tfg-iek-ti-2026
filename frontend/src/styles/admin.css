@@ -289,6 +289,8 @@
 
 /* ---------- Calibración ---------- */
 .cal-tabla td { white-space: nowrap; }
+.cal-fija { margin: 12px 0 16px; padding: 10px 12px; border-left: 3px solid var(--azul, #1f4e79); background: rgba(0, 0, 0, 0.03); }
+.cal-fija .nota { margin-top: 0; }
 .cal-mejor { color: var(--verde); font-weight: 600; }
 .cal-grafico { position: relative; height: 320px; max-width: 520px; margin: 12px 0; }
 .celda-formula { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 0.88em; white-space: nowrap; }

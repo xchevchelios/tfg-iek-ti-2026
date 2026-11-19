@@ -20,6 +20,11 @@ export function guardarCalibracion(parametros) {
   return api.post('/api/calibraciones', parametros);
 }
 
+/** Corrección fija por humedad alta (método FIUNA), PM2.5 y PM10 de una estación. */
+export function aplicarHumedadAlta(estacion) {
+  return api.post('/api/calibraciones/humedad-alta', { estacion });
+}
+
 export function anularCalibracion(id) {
   return api.del(`/api/calibraciones/${id}`);
 }

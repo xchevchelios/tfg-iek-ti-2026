@@ -28,6 +28,7 @@ from calibracion import (
     calibrar_desde_csv,
     evaluar_coef,
     guardar,
+    guardar_humedad_exp,
 )
 from db import get_connection, init_db
 
@@ -37,6 +38,12 @@ def _num(v, d=2):
 
 
 def _formula(c):
+    if c.get("modelo") == "humedad_exp":
+        return f"x / e^({c['a']:g}·(HR−{c['b']:g})) si HR>{c['c']:g}"
+    return _formula_lineal(c)
+
+
+def _formula_lineal(c):
     def termo(v, sufijo):
         return f" {'-' if v < 0 else '+'} {abs(v):.3f}·{sufijo}"
     texto = f"{c['a']:.2f}" + termo(c["b"], "x")
@@ -107,7 +114,7 @@ def listar(conn):
         print("Sin calibraciones.")
     for f in filas:
         estado = "ANULADA" if f["anulada"] else "vigente"
-        print(f"#{f['id']:<4}{f['station_id']:<14}{f['metrica']:<6}{f['modelo']:<9}"
+        print(f"#{f['id']:<4}{f['station_id']:<14}{f['metrica']:<13}{f['modelo']:<13}"
               f"{_formula(dict(f)):<34} desde {f['valida_desde']}  n={f['n_pares']}  "
               f"RMSE {_num(f['rmse_crudo'])}→{_num(f['rmse'])}  {estado}")
 
@@ -136,6 +143,8 @@ def main():
                     help="guarda este modelo ('humedad' solo existe para PM)")
     ap.add_argument("--desde", help="vigente desde, hora local (por defecto, todo el historial)")
     ap.add_argument("--notas")
+    ap.add_argument("--humedad-alta", action="store_true",
+                    help="carga la correccion FIUNA por humedad alta (PM2.5 y PM10) de --estacion")
     ap.add_argument("--listar", action="store_true")
     ap.add_argument("--anular", type=int, metavar="ID")
     args = ap.parse_args()
@@ -155,6 +164,20 @@ def main():
             bitacora(conn, "calibracion_anulada", None, f"#{args.anular}")
             conn.commit()
             print(f"Calibracion #{args.anular} anulada.")
+            return
+
+        if args.humedad_alta:
+            if not args.estacion:
+                ap.error("hace falta --estacion")
+            if not conn.execute("SELECT 1 FROM estaciones WHERE id = ?", (args.estacion,)).fetchone():
+                sys.exit(f"Estacion inexistente: {args.estacion}")
+            for metrica in METRICAS_CALIBRABLES[:2]:
+                cal_id = guardar_humedad_exp(conn, args.estacion, metrica, valida_desde=args.desde,
+                                             offset_horas=config.TZ_OFFSET_HORAS)
+                bitacora(conn, "calibracion_alta", args.estacion,
+                         f"#{cal_id} {metrica} humedad alta (FIUNA)")
+                print(f"Calibracion #{cal_id} ({metrica}, humedad alta FIUNA) cargada.")
+            conn.commit()
             return
 
         if not (args.estacion and args.metrica and args.csv):

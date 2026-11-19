@@ -22,6 +22,16 @@ export function crearSeccionEstacion(estacion, { alPedirHistorial }) {
   const titulo = document.createElement('h2');
   titulo.className = 'station-title';
   titulo.textContent = estacion.nombre;
+  // Se muestra cuando la ultima lectura tiene humedad >= 80 %: el SDS011 es
+  // menos confiable y el PM viene corregido por humedad (si hay correccion).
+  const avisoHumedad = document.createElement('span');
+  avisoHumedad.className = 'aviso-humedad';
+  avisoHumedad.textContent = 'Humedad alta: PM menos confiable';
+  avisoHumedad.title =
+    'Con humedad relativa de 80 % o más el sensor de partículas mide de más. ' +
+    'Si la estación tiene la corrección por humedad alta, el valor ya viene corregido.';
+  avisoHumedad.hidden = true;
+  titulo.appendChild(avisoHumedad);
   seccion.appendChild(titulo);
 
   const grilla = document.createElement('div');
@@ -62,5 +72,9 @@ export function crearSeccionEstacion(estacion, { alPedirHistorial }) {
     });
   }
 
-  return { elemento: seccion, graficos };
+  const marcarHumedadAlta = (activa) => {
+    avisoHumedad.hidden = !activa;
+  };
+
+  return { elemento: seccion, graficos, marcarHumedadAlta };
 }

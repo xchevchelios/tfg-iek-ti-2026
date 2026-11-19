@@ -39,6 +39,19 @@ from bisect import bisect_right
 from datetime import datetime, timedelta, timezone
 
 METRICAS_PM = ("pm25", "pm10")
+
+# Correccion por humedad alta del metodo publicado por la red FIUNA (Recalde,
+# Bernal, Rincon y Stalder, Data in Brief 2026; notebook CorrectionCalculation):
+#     PM_corr = PM / exp(ALFA * (HR - HR_REF))   solo si HR > UMBRAL
+# No se ajusta con datos: es un modelo fijo. En la tabla se guarda con
+# a = ALFA, b = HR_REF, c = UMBRAL. La HR que usa es la humedad ya calibrada
+# de la estacion (la HR real), no la cruda del DHT21.
+MODELO_HUMEDAD_EXP = "humedad_exp"
+FIUNA_ALFA, FIUNA_HR_REF, FIUNA_UMBRAL = 0.014, 40.0, 80.0
+
+# Con HR calibrada en o por encima de este valor la lectura se marca como de
+# humedad alta (el SDS011 es menos confiable): el dashboard lo indica.
+HR_ALTA = 80.0
 METRICAS_CALIBRABLES = ("pm25", "pm10", "temperatura", "humedad")
 MODELOS = ("lineal", "humedad")
 
@@ -81,12 +94,13 @@ class ErrorCalibracion(ValueError):
 # =================================================================
 
 def crear_tabla(conn):
-    # La primera version de la tabla solo admitia pm25/pm10 en el CHECK, y
-    # SQLite no permite modificar un CHECK: se reconstruye copiando las filas.
+    # Las versiones anteriores de la tabla tenian un CHECK mas chico (solo
+    # pm25/pm10, o sin el modelo humedad_exp) y SQLite no permite modificar un
+    # CHECK: se reconstruye copiando las filas.
     actual = conn.execute(
         "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'calibraciones'"
     ).fetchone()
-    if actual and "temperatura" not in actual[0]:
+    if actual and MODELO_HUMEDAD_EXP not in actual[0]:
         conn.execute("ALTER TABLE calibraciones RENAME TO calibraciones_v1")
         _crear_tabla_actual(conn)
         conn.execute("INSERT INTO calibraciones SELECT * FROM calibraciones_v1")
@@ -109,7 +123,8 @@ def _crear_tabla_actual(conn):
             station_id    TEXT NOT NULL REFERENCES estaciones(id),
             metrica       TEXT NOT NULL CHECK (metrica IN
                               ('pm25', 'pm10', 'temperatura', 'humedad')),
-            modelo        TEXT NOT NULL CHECK (modelo IN ('lineal', 'humedad')),
+            modelo        TEXT NOT NULL CHECK (modelo IN
+                              ('lineal', 'humedad', 'humedad_exp')),
             a             REAL NOT NULL,
             b             REAL NOT NULL,
             c             REAL NOT NULL DEFAULT 0,
@@ -566,6 +581,35 @@ def guardar(conn, resultado, modelo, *, valida_desde=None, notas=None, usuario=N
     return cursor.lastrowid
 
 
+def guardar_humedad_exp(conn, station_id, metrica, *, valida_desde=None, usuario=None,
+                        offset_horas=0.0):
+    """Da de alta la correccion FIUNA por humedad alta para una metrica de PM.
+    Devuelve el id."""
+    if metrica not in METRICAS_PM:
+        raise ErrorCalibracion("La correccion por humedad alta es solo para PM2.5 y PM10.")
+    desde = DESDE_SIEMPRE if not valida_desde else texto_utc(parsear_ts(valida_desde, offset_horas))
+    cursor = conn.execute(
+        """
+        INSERT INTO calibraciones (
+            station_id, metrica, modelo, a, b, c, valida_desde, ventana_min, hr_max,
+            n_pares, validacion, n_validacion, pares_json, notas, creada_en,
+            usuario_id, email
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, 'en_muestra', 0, '[]', ?, ?, ?, ?)
+        """,
+        (
+            station_id, metrica, MODELO_HUMEDAD_EXP, FIUNA_ALFA, FIUNA_HR_REF, FIUNA_UMBRAL,
+            desde,
+            "Correccion por humedad alta, metodo publicado de la red FIUNA: "
+            f"PM / exp({FIUNA_ALFA}·(HR − {FIUNA_HR_REF:g})) si HR > {FIUNA_UMBRAL:g} %. "
+            "Con HR menor el valor no se modifica (validado contra datos 2020 del campus).",
+            datetime.now(timezone.utc).isoformat(),
+            usuario["id"] if usuario else None,
+            usuario["email"] if usuario else None,
+        ),
+    )
+    return cursor.lastrowid
+
+
 # =================================================================
 # Aplicacion al leer
 # =================================================================
@@ -580,7 +624,8 @@ class Calibrador:
             clave = (f["station_id"], f["metrica"])
             lista = self._tablas.setdefault(clave, ([], []))
             lista[0].append(f["valida_desde"])
-            lista[1].append((f["id"], f["a"], f["b"], f["c"]))
+            modelo = f["modelo"] if "modelo" in f.keys() else "lineal"
+            lista[1].append((f["id"], f["a"], f["b"], f["c"], modelo))
 
     def vigente(self, station_id, metrica, timestamp):
         tabla = self._tablas.get((station_id, metrica))
@@ -598,7 +643,15 @@ class Calibrador:
         cal = self.vigente(station_id, metrica, timestamp)
         if cal is None:
             return crudo, None
-        cal_id, a, b, c = cal
+        cal_id, a, b, c, modelo = cal
+        if modelo == MODELO_HUMEDAD_EXP:
+            # Usa la HR real: la humedad de la estacion con su calibracion.
+            hr, _ = self.valor(station_id, "humedad", timestamp, humedad, None)
+            if hr is None:
+                return crudo, None
+            if hr <= c:
+                return crudo, cal_id
+            return round(crudo / math.exp(a * (hr - b)), 1), cal_id
         if c and humedad is None:
             # El modelo con humedad no se puede evaluar sin HR: se informa el
             # crudo sin marcarlo como calibrado, en vez de inventar un valor.
@@ -624,12 +677,14 @@ class Calibrador:
             salida[metrica] = valor
             usadas[metrica] = cal_id
         salida["calibracion"] = usadas
+        hr = salida.get("humedad")  # ya calibrada si hay calibracion de humedad
+        salida["humedad_alta"] = hr is not None and hr >= HR_ALTA
         return salida
 
 
 def cargar_calibrador(conn, station_ids=None):
     sql = """
-        SELECT id, station_id, metrica, a, b, c, valida_desde
+        SELECT id, station_id, metrica, modelo, a, b, c, valida_desde
         FROM calibraciones WHERE anulada = 0
     """
     params = []
