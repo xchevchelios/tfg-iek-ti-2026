@@ -29,6 +29,7 @@ import { mostrarAviso } from '../ui/aviso.js';
 import { iniciarPestanias } from '../ui/pestanias.js';
 import { mostrarTerminal, ocultarTerminal, iniciarTerminal } from '../ui/terminalMqtt.js';
 import { iniciarVistaCalibracion, mostrarVistaCalibracion } from '../ui/vistaCalibracion.js';
+import { iniciarVistaFiabilidad, mostrarVistaFiabilidad } from '../ui/vistaFiabilidad.js';
 import { iniciarVistaGateway, mostrarVistaGateway } from '../ui/vistaGateway.js';
 import '../styles/base.css';
 import '../styles/admin.css';
@@ -134,6 +135,7 @@ function alMostrarPestania(nombre) {
   if (nombre === 'gateway') mostrarVistaGateway();
   if (nombre === 'trafico') mostrarTerminal();
   if (nombre === 'calibracion') mostrarVistaCalibracion();
+  if (nombre === 'fiabilidad') mostrarVistaFiabilidad();
 }
 
 const pestanias = iniciarPestanias(document.getElementById('pestanias'), {
@@ -142,6 +144,7 @@ const pestanias = iniciarPestanias(document.getElementById('pestanias'), {
 });
 iniciarVistaGateway({ manejarError: (error) => manejarError(error) });
 iniciarVistaCalibracion({ manejarError: (error) => manejarError(error) });
+iniciarVistaFiabilidad({ manejarError: (error) => manejarError(error) });
 iniciarTerminal();
 
 // =================================================================

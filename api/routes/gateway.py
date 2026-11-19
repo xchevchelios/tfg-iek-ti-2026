@@ -86,3 +86,24 @@ def credenciales_mqtt():
     respuesta = jsonify({"usuario": config.MQTT_PANEL_USER, "clave": config.MQTT_PANEL_PASS})
     respuesta.headers["Cache-Control"] = "no-store"
     return respuesta
+
+
+@bp.get("/fiabilidad")
+@requiere_rol("admin", "operador")
+def fiabilidad():
+    """% de rondas sin respuesta por nodo, desde una version de firmware.
+
+    ?firmware_min=2.4.0  (vacio = todas)   ?agrupar=dia|hora
+    """
+    from db import get_connection
+    from fiabilidad import calcular
+
+    try:
+        with get_connection() as conn:
+            return jsonify(calcular(
+                conn,
+                firmware_min=(request.args.get("firmware_min") or "").strip() or None,
+                agrupar=request.args.get("agrupar", "dia"),
+            ))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400

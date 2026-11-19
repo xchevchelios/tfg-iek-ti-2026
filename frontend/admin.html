@@ -41,6 +41,7 @@
         <button type="button" role="tab" data-pestania="estaciones">Estaciones</button>
         <button type="button" role="tab" data-pestania="gateway">Gateway</button>
         <button type="button" role="tab" data-pestania="trafico">Tráfico MQTT</button>
+        <button type="button" role="tab" data-pestania="fiabilidad">Fiabilidad</button>
         <button type="button" role="tab" data-pestania="calibracion" hidden>Calibración</button>
         <button type="button" role="tab" data-pestania="usuarios" hidden>Usuarios</button>
         <button type="button" role="tab" data-pestania="bitacora" hidden>Bitácora</button>
@@ -191,6 +192,63 @@
           mismos parámetros se pueden cambiar con <code>gestor.py</code> en la VM;
           siempre se publica el documento completo, así que vale el último cambio.
         </p>
+      </section>
+
+      <section class="panel" data-panel="fiabilidad" role="tabpanel" hidden>
+        <div class="panel__cabecera">
+          <h2 class="panel__titulo">Fiabilidad del enlace LoRa</h2>
+        </div>
+        <form id="form-fiabilidad" class="formulario formulario--grilla">
+          <div class="campo-grupo">
+            <label for="fia-firmware">Firmware del gateway desde</label>
+            <select id="fia-firmware" name="firmware_min"></select>
+          </div>
+          <div class="campo-grupo">
+            <label for="fia-agrupar">Agrupar por</label>
+            <select id="fia-agrupar" name="agrupar">
+              <option value="dia">Día</option>
+              <option value="hora">Hora</option>
+            </select>
+          </div>
+          <div class="campo-grupo campo-grupo--accion">
+            <button type="submit">Actualizar</button>
+          </div>
+        </form>
+        <p id="fia-estado" class="nota" hidden></p>
+        <div id="fia-contenido" hidden>
+          <p id="fia-periodo" class="nota"></p>
+          <div id="fia-tarjetas" class="fia-tarjetas"></div>
+          <h3 class="fia-subtitulo">% de rondas sin respuesta</h3>
+          <div class="fia-grafico"><canvas id="fia-grafico" aria-label="Porcentaje de rondas sin respuesta por nodo"></canvas></div>
+          <h3 class="fia-subtitulo">Detalle por nodo</h3>
+          <div class="tabla-scroll">
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th>Nodo</th><th>Rondas</th><th>Con dato</th><th>Dato viejo</th>
+                  <th>Sin respuesta</th><th>Sin informe</th><th>Peor racha</th><th>RSSI medio</th>
+                </tr>
+              </thead>
+              <tbody id="fia-nodos"></tbody>
+            </table>
+          </div>
+          <h3 class="fia-subtitulo">Comparación entre versiones de firmware</h3>
+          <div class="tabla-scroll">
+            <table class="tabla">
+              <thead>
+                <tr><th>Firmware</th><th>Desde</th><th>Hasta</th><th>Rondas</th><th>% sin respuesta</th><th>% con dato</th></tr>
+              </thead>
+              <tbody id="fia-versiones"></tbody>
+            </table>
+          </div>
+          <p class="nota">
+            <strong>Sin respuesta:</strong> el nodo no contestó en esa ronda.
+            <strong>Dato viejo:</strong> contestó, pero con una medición anterior (no oyó la orden de medir).
+            <strong>Sin informe:</strong> el gateway no dijo nada de ese nodo.
+            <strong>Peor racha:</strong> rondas seguidas sin dato nuevo.
+            Las rondas que el gateway no llegó a reportar se cuentan aparte.
+          </p>
+        </div>
       </section>
 
       <section class="panel" data-panel="trafico" role="tabpanel" hidden>

@@ -9,3 +9,9 @@ export const guardarParametros = (parametros) => api.put('/api/gateway/parametro
 
 /** Usuario MQTT de solo lectura; la API lo entrega solo con sesion iniciada. */
 export const credencialesMqtt = () => api.get('/api/gateway/credenciales-mqtt');
+
+/** % de rondas sin respuesta por nodo, desde una version de firmware del gateway. */
+export function leerFiabilidad({ firmwareMin = '', agrupar = 'dia' } = {}) {
+  const q = new URLSearchParams({ firmware_min: firmwareMin, agrupar });
+  return api.get(`/api/gateway/fiabilidad?${q}`);
+}

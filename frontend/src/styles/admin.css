@@ -294,3 +294,15 @@
 .cal-mejor { color: var(--verde); font-weight: 600; }
 .cal-grafico { position: relative; height: 320px; max-width: 520px; margin: 12px 0; }
 .celda-formula { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; font-size: 0.88em; white-space: nowrap; }
+
+/* ---------- Fiabilidad ---------- */
+.fia-tarjetas { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 12px 0; }
+.fia-tarjeta { border: 1px solid rgba(0, 0, 0, 0.12); border-radius: 8px; padding: 12px; }
+.fia-tarjeta__nombre { font-size: 0.85em; opacity: 0.75; }
+.fia-tarjeta__valor { font-size: 2em; font-weight: 700; line-height: 1.1; margin: 4px 0; }
+.fia-tarjeta__detalle { font-size: 0.8em; opacity: 0.75; }
+.fia-tarjeta[data-nivel="bien"] .fia-tarjeta__valor { color: var(--verde); }
+.fia-tarjeta[data-nivel="regular"] .fia-tarjeta__valor { color: #b58100; }
+.fia-tarjeta[data-nivel="mal"] .fia-tarjeta__valor { color: var(--rojo); }
+.fia-subtitulo { margin: 18px 0 6px; font-size: 1em; }
+.fia-grafico { position: relative; height: 300px; }
