@@ -13,6 +13,7 @@ from configuracion_red import (
     LIMITES,
     MARGEN_MEDICION_MS,
     PAUSA_ENTRE_NODOS_MS,
+    ULTIMA_COPIA_MEDIR_MS,
     POR_DEFECTO,
     VIDA_LASER_H,
     direcciones_activas,
@@ -34,6 +35,7 @@ def limites():
         "por_defecto": POR_DEFECTO,
         "margen_medicion_ms": MARGEN_MEDICION_MS,
         "pausa_entre_nodos_ms": PAUSA_ENTRE_NODOS_MS,
+        "ultima_copia_medir_ms": ULTIMA_COPIA_MEDIR_MS,
         "vida_laser_h": VIDA_LASER_H,
         "nodos_activos": len(direcciones_activas()),
     })
@@ -46,9 +48,10 @@ def guardar_parametros():
     if not isinstance(datos, dict):
         return jsonify({"error": "Se esperaba un objeto JSON."}), 400
 
-    # reintentos es posterior al resto: si un panel viejo no lo manda, va el
-    # valor por defecto en vez de rechazar el cambio.
+    # reintentos y pausa_reintento_ms son posteriores al resto: si un panel
+    # viejo no los manda, va el valor por defecto en vez de rechazar el cambio.
     datos.setdefault("reintentos", POR_DEFECTO["reintentos"])
+    datos.setdefault("pausa_reintento_ms", POR_DEFECTO["pausa_reintento_ms"])
     faltan = [clave for clave in POR_DEFECTO if clave not in datos]
     if faltan:
         return jsonify({"error": f"Faltan campos: {', '.join(faltan)}."}), 400
@@ -67,7 +70,8 @@ def guardar_parametros():
     registrar(
         "parametros_gateway", "gateway",
         f"periodo {parametros['periodo_s']} s, ventana {parametros['estabilizacion_s']} s, "
-        f"timeout {parametros['timeout_ms']} ms, reintentos {parametros['reintentos']}, "
+        f"timeout {parametros['timeout_ms']} ms, reintentos {parametros['reintentos']} "
+        f"(pausa {parametros['pausa_reintento_ms']} ms), "
         f"publicar {'si' if parametros['publicar'] else 'no'}",
     )
     return jsonify({"publicado": True, "parametros": parametros})

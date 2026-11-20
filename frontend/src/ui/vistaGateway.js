@@ -22,8 +22,11 @@ const TOPICS = {
   parametros: 'gateway/config/parametros',
   aplicado: 'gateway/estado/aplicado',
 };
-const CAMPOS = ['periodo_s', 'estabilizacion_s', 'timeout_ms', 'reintentos', 'publicar'];
-const POR_DEFECTO = { periodo_s: 300, estabilizacion_s: 30, timeout_ms: 3000, publicar: true, reintentos: 10 };
+const CAMPOS = ['periodo_s', 'estabilizacion_s', 'timeout_ms', 'reintentos', 'pausa_reintento_ms', 'publicar'];
+const POR_DEFECTO = {
+  periodo_s: 300, estabilizacion_s: 30, timeout_ms: 3000, publicar: true, reintentos: 10,
+  pausa_reintento_ms: 100,
+};
 
 const $ = (id) => document.getElementById(id);
 const formulario = () => $('gw-form');
@@ -77,7 +80,7 @@ function textoParametro(clave, valor) {
   if (valor === undefined || valor === null) return '—';
   if (clave === 'publicar') return valor ? 'sí' : 'no';
   if (clave === 'reintentos') return String(valor);
-  return clave === 'timeout_ms' ? `${valor} ms` : `${valor} s`;
+  return clave === 'timeout_ms' || clave === 'pausa_reintento_ms' ? `${valor} ms` : `${valor} s`;
 }
 
 /** Agrega un par termino/valor a un <dl>, siempre como texto. */
@@ -241,6 +244,7 @@ function rellenarFormulario() {
   f.estabilizacion_s.value = p.estabilizacion_s;
   f.timeout_ms.value = p.timeout_ms;
   f.reintentos.value = p.reintentos;
+  f.pausa_reintento_ms.value = p.pausa_reintento_ms;
   f.publicar.checked = Boolean(p.publicar);
 }
 
@@ -252,16 +256,25 @@ function leerFormulario() {
     estabilizacion_s: entero(f.estabilizacion_s),
     timeout_ms: entero(f.timeout_ms),
     reintentos: entero(f.reintentos),
+    pausa_reintento_ms: entero(f.pausa_reintento_ms),
     publicar: f.publicar.checked,
   };
 }
 
-/** Peor caso: ningun nodo responde a ninguno de sus pedidos (1 + reintentos). */
+/**
+ * Peor caso: ningun nodo responde a ninguno de sus pedidos. Cada nodo:
+ * (1 + reintentos) timeouts, la pausa entre reintentos antes de cada
+ * reintento y la pausa corta antes del siguiente nodo. La ventana se cuenta
+ * desde la ultima copia de la orden de medir. Igual que el servidor.
+ */
 function peorRonda(p, n) {
   const margen = limites?.margen_medicion_ms ?? 2000;
-  const pausa = limites?.pausa_entre_nodos_ms ?? 100;
-  const pedidos = 1 + (p.reintentos ?? POR_DEFECTO.reintentos);
-  return (p.estabilizacion_s * 1000 + margen + n * pedidos * (p.timeout_ms + pausa)) / 1000;
+  const pausaNodos = limites?.pausa_entre_nodos_ms ?? 100;
+  const ultimaCopia = limites?.ultima_copia_medir_ms ?? 3000;
+  const reintentos = p.reintentos ?? POR_DEFECTO.reintentos;
+  const pausa = p.pausa_reintento_ms ?? POR_DEFECTO.pausa_reintento_ms;
+  const porNodo = (1 + reintentos) * p.timeout_ms + reintentos * pausa + pausaNodos;
+  return (ultimaCopia + p.estabilizacion_s * 1000 + margen + n * porNodo) / 1000;
 }
 
 /** La misma validacion que el servidor, para avisar antes de enviar. */
@@ -269,7 +282,7 @@ function validar(p) {
   const rangos = limites?.limites ?? {};
   const nombres = {
     periodo_s: 'El período', estabilizacion_s: 'La ventana', timeout_ms: 'El timeout',
-    reintentos: 'Los reintentos',
+    reintentos: 'Los reintentos', pausa_reintento_ms: 'La pausa entre reintentos',
   };
   for (const [clave, { min, max }] of Object.entries(rangos)) {
     if (!Number.isInteger(p[clave])) return `${nombres[clave]} tiene que ser un número entero.`;
@@ -297,11 +310,15 @@ function renderPrevia() {
     const encendido = p.estabilizacion_s / p.periodo_s;
     const vidaH = limites?.vida_laser_h ?? 8000;
     const n = nodosBase.length;
-    const peor = Number.isFinite(p.timeout_ms) && Number.isFinite(p.reintentos) ? peorRonda(p, n) : NaN;
+    const completos = [p.timeout_ms, p.reintentos, p.pausa_reintento_ms].every(Number.isFinite);
+    const peor = completos ? peorRonda(p, n) : NaN;
+    const cadaMs = p.timeout_ms + p.pausa_reintento_ms;
     const items = [
       ['Láser encendido', `${numero(encendido * 100)} % del tiempo`],
       ['Vida estimada del láser', `≈ ${numero(vidaH / encendido / 8760)} años`],
       ['Mediciones por estación', `${numero(Math.floor(86400 / p.periodo_s), 0)} por día`],
+      ['Pedido a un nodo que no contesta',
+        completos ? (p.reintentos > 0 ? `cada ${numero(cadaMs / 1000)} s, hasta ${p.reintentos + 1} veces` : 'una sola vez') : '—'],
       ['Ronda en el peor caso', Number.isFinite(peor) ? `${Math.round(peor)} s de ${p.periodo_s} s (${n} nodos)` : '—'],
     ];
     items.forEach(([titulo, valor]) => {

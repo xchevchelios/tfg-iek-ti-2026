@@ -112,20 +112,30 @@ LIMITES = {
     # Pedidos extra a un nodo que no contesta antes de pasar al siguiente
     # (firmware 2.4.0 en adelante; los anteriores ignoran el campo).
     "reintentos": (0, 10),
+    # Entre un timeout y el reintento siguiente (firmware 2.6.0 en adelante):
+    # al nodo que no contesta se le pide cada timeout_ms + pausa_reintento_ms.
+    "pausa_reintento_ms": (100, 30000),
 }
 POR_DEFECTO = {"periodo_s": 300, "estabilizacion_s": 30, "timeout_ms": 3000, "publicar": True,
-               "reintentos": 10}
+               "reintentos": 10, "pausa_reintento_ms": 100}
 MARGEN_MEDICION_MS = 2000
 PAUSA_ENTRE_NODOS_MS = 100
+# La orden de medir sale en 4 copias (0; 0,4; 1,5 y 3 s): se pide el dato
+# pasada la ventana contada desde la ultima (firmware 2.5.0 en adelante).
+ULTIMA_COPIA_MEDIR_MS = 3000
 VIDA_LASER_H = 8000   # vida util del laser del SDS011 segun su hoja de datos
 
 
 def duracion_maxima_ronda_s(p, n):
     """Lo que tarda una ronda en el peor caso: ningun nodo responde a ninguno
-    de sus pedidos (el primero mas los reintentos)."""
-    pedidos = 1 + p.get("reintentos", POR_DEFECTO["reintentos"])
-    return (p["estabilizacion_s"] * 1000 + MARGEN_MEDICION_MS
-            + n * pedidos * (p["timeout_ms"] + PAUSA_ENTRE_NODOS_MS)) / 1000
+    de sus pedidos. Cada nodo: (1 + reintentos) timeouts, una pausa entre
+    reintentos antes de cada reintento y la pausa corta antes del siguiente.
+    La ventana se cuenta desde la ultima copia de la orden de medir."""
+    reintentos = p.get("reintentos", POR_DEFECTO["reintentos"])
+    pausa = p.get("pausa_reintento_ms", POR_DEFECTO["pausa_reintento_ms"])
+    por_nodo = (1 + reintentos) * p["timeout_ms"] + reintentos * pausa + PAUSA_ENTRE_NODOS_MS
+    return (ULTIMA_COPIA_MEDIR_MS + p["estabilizacion_s"] * 1000 + MARGEN_MEDICION_MS
+            + n * por_nodo) / 1000
 
 
 def validar_parametros(p, n):

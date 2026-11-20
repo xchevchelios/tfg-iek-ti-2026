@@ -34,11 +34,12 @@ TOPIC_APLICADO = "gateway/estado/aplicado"   # lo que el gateway reporta haber a
 # Los mismos rangos y tiempos que firmware/gateway/planificador.h. El gestor
 # valida para dar un error claro; el firmware vuelve a validar igual.
 LIMITES = {"periodo_s": (60, 3600), "estabilizacion_s": (15, 60), "timeout_ms": (500, 5000),
-           "reintentos": (0, 10)}
+           "reintentos": (0, 10), "pausa_reintento_ms": (100, 30000)}
 POR_DEFECTO = {"periodo_s": 300, "estabilizacion_s": 30, "timeout_ms": 3000, "publicar": True,
-               "reintentos": 10}
+               "reintentos": 10, "pausa_reintento_ms": 100}
 MARGEN_MEDICION_MS = 2000
 PAUSA_ENTRE_NODOS_MS = 100
+ULTIMA_COPIA_MEDIR_MS = 3000   # la orden de medir sale en 4 copias, la ultima a los 3 s
 VIDA_LASER_H = 8000          # vida util del laser del SDS011 segun su hoja de datos
 
 # CONFIGURACIÓN
@@ -561,10 +562,14 @@ def publicar_retenido(topic, carga):
 
 def duracion_maxima_ronda_s(p, n):
     """Lo que tarda una ronda en el peor caso: ningun nodo responde a ninguno
-    de sus pedidos (el primero mas los reintentos)."""
-    pedidos = 1 + p.get("reintentos", POR_DEFECTO["reintentos"])
-    return (p["estabilizacion_s"] * 1000 + MARGEN_MEDICION_MS
-            + n * pedidos * (p["timeout_ms"] + PAUSA_ENTRE_NODOS_MS)) / 1000
+    de sus pedidos. Cada nodo: (1 + reintentos) timeouts, una pausa entre
+    reintentos antes de cada reintento y la pausa corta antes del siguiente.
+    La ventana se cuenta desde la ultima copia de la orden de medir."""
+    reintentos = p.get("reintentos", POR_DEFECTO["reintentos"])
+    pausa = p.get("pausa_reintento_ms", POR_DEFECTO["pausa_reintento_ms"])
+    por_nodo = (1 + reintentos) * p["timeout_ms"] + reintentos * pausa + PAUSA_ENTRE_NODOS_MS
+    return (ULTIMA_COPIA_MEDIR_MS + p["estabilizacion_s"] * 1000 + MARGEN_MEDICION_MS
+            + n * por_nodo) / 1000
 
 
 def validar_parametros(p, n):
@@ -597,13 +602,14 @@ def _texto_parametro(clave, valor):
         return "sí" if valor else "no"
     if clave == "reintentos":
         return str(valor)
-    return f"{valor} ms" if clave == "timeout_ms" else f"{valor} s"
+    return f"{valor} ms" if clave in ("timeout_ms", "pausa_reintento_ms") else f"{valor} s"
 
 
-CAMPOS_EDITABLES = {"1": "periodo_s", "2": "estabilizacion_s", "3": "timeout_ms", "5": "reintentos"}
+CAMPOS_EDITABLES = {"1": "periodo_s", "2": "estabilizacion_s", "3": "timeout_ms", "5": "reintentos",
+                    "6": "pausa_reintento_ms"}
 ETIQUETAS = {"periodo_s": "Período", "estabilizacion_s": "Ventana del SDS011",
              "timeout_ms": "Timeout por nodo", "publicar": "Publicar",
-             "reintentos": "Reintentos por nodo"}
+             "reintentos": "Reintentos por nodo", "pausa_reintento_ms": "Pausa entre reintentos"}
 
 
 def ver_parametros():
@@ -620,7 +626,8 @@ def ver_parametros():
         base = _parametros_de(deseado_json or aplicado_json)
 
         print(f"\n{GRIS} {celda('', 20)} {celda('DESEADO', 12)} APLICADO POR EL GATEWAY{RESET}")
-        for clave in ("periodo_s", "estabilizacion_s", "timeout_ms", "reintentos", "publicar"):
+        for clave in ("periodo_s", "estabilizacion_s", "timeout_ms", "reintentos", "pausa_reintento_ms",
+                      "publicar"):
             deseado = deseado_json.get(clave) if deseado_json else None
             aplicado = aplicado_json.get(clave) if aplicado_json else None
             difiere = deseado is not None and aplicado is not None and deseado != aplicado
@@ -629,7 +636,8 @@ def ver_parametros():
                   f"{_texto_parametro(clave, aplicado)}{marca}")
         if deseado_json is None:
             print(f"\n {GRIS}No hay parámetros publicados: el gateway usa los que tiene en su NVS\n"
-                  f" o los de fábrica (300 s, 30 s, 3000 ms, 10 reintentos, publicar).{RESET}")
+                  f" o los de fábrica (300 s, 30 s, 3000 ms, 10 reintentos, pausa 100 ms,"
+                  f" publicar).{RESET}")
         if aplicado_json is None:
             print(f" {GRIS}El gateway no reporta lo aplicado: firmware v1 o sin conexión.{RESET}")
         rechazo = ((aplicado_json or {}).get("rechazos") or {}).get("parametros")
@@ -639,7 +647,7 @@ def ver_parametros():
         _mostrar_consecuencias(base, n)
 
         print(f"\n{BOLD}Cambiar:{RESET} 1 período · 2 ventana · 3 timeout · 4 publicar sí/no · "
-              "5 reintentos")
+              "5 reintentos · 6 pausa entre reintentos")
         opcion = input("Opción (Enter para volver): ").strip()
         if not opcion:
             return True
