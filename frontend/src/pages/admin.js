@@ -31,6 +31,7 @@ import { mostrarTerminal, ocultarTerminal, iniciarTerminal } from '../ui/termina
 import { iniciarVistaCalibracion, mostrarVistaCalibracion } from '../ui/vistaCalibracion.js';
 import { iniciarVistaFiabilidad, mostrarVistaFiabilidad } from '../ui/vistaFiabilidad.js';
 import { iniciarVistaGateway, mostrarVistaGateway } from '../ui/vistaGateway.js';
+import { iniciarVistaDebug } from '../ui/vistaDebug.js';
 import '../styles/base.css';
 import '../styles/admin.css';
 
@@ -143,6 +144,7 @@ const pestanias = iniciarPestanias(document.getElementById('pestanias'), {
   alMostrar: alMostrarPestania,
 });
 iniciarVistaGateway({ manejarError: (error) => manejarError(error) });
+iniciarVistaDebug({ manejarError: (error) => manejarError(error) });
 iniciarVistaCalibracion({ manejarError: (error) => manejarError(error) });
 iniciarVistaFiabilidad({ manejarError: (error) => manejarError(error) });
 iniciarTerminal();

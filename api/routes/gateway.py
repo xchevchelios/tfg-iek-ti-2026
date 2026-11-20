@@ -10,14 +10,18 @@ from flask import Blueprint, jsonify, request
 
 import config
 from configuracion_red import (
+    DEBUG_POR_DEFECTO,
     LIMITES,
+    LIMITES_DEBUG,
     MARGEN_MEDICION_MS,
     PAUSA_ENTRE_NODOS_MS,
     ULTIMA_COPIA_MEDIR_MS,
     POR_DEFECTO,
     VIDA_LASER_H,
     direcciones_activas,
+    publicar_debug,
     publicar_parametros,
+    validar_debug,
     validar_parametros,
 )
 from seguridad import registrar, requiere_rol
@@ -37,6 +41,10 @@ def limites():
         "pausa_entre_nodos_ms": PAUSA_ENTRE_NODOS_MS,
         "ultima_copia_medir_ms": ULTIMA_COPIA_MEDIR_MS,
         "vida_laser_h": VIDA_LASER_H,
+        "debug": {
+            "limites": {clave: {"min": a, "max": b} for clave, (a, b) in LIMITES_DEBUG.items()},
+            "por_defecto": DEBUG_POR_DEFECTO,
+        },
         "nodos_activos": len(direcciones_activas()),
     })
 
@@ -75,6 +83,39 @@ def guardar_parametros():
         f"publicar {'si' if parametros['publicar'] else 'no'}",
     )
     return jsonify({"publicado": True, "parametros": parametros})
+
+
+@bp.post("/debug")
+@requiere_rol("admin", "operador")
+def debug_lora():
+    """Inicia o detiene el debug LoRa del gateway (firmware 2.7.0 en adelante).
+
+    {"activo": true, "nodo": 2, "periodo_ms": 5000, "timeout_ms": 4000, "duracion_s": 600}
+    {"activo": false}
+
+    El resultado no pasa por la API: el panel lo lee de gateway/debug/log y
+    gateway/debug/estado con el usuario MQTT de solo lectura.
+    """
+    datos = request.get_json(silent=True)
+    if not isinstance(datos, dict):
+        return jsonify({"error": "Se esperaba un objeto JSON."}), 400
+    pedido = {"activo": datos.get("activo")}
+    if pedido["activo"] is True:
+        pedido.update({clave: datos.get(clave, valor) for clave, valor in DEBUG_POR_DEFECTO.items()})
+
+    motivo = validar_debug(pedido)
+    if motivo:
+        return jsonify({"error": motivo}), 400
+    if not publicar_debug(pedido):
+        return jsonify({"error": "El broker no acepto el pedido de debug."}), 503
+
+    if pedido["activo"]:
+        detalle = (f"inicio: estacion {pedido['nodo']}, un pedido cada {pedido['periodo_ms']} ms, "
+                   f"timeout {pedido['timeout_ms']} ms, durante {pedido['duracion_s']} s")
+    else:
+        detalle = "detenido"
+    registrar("debug_lora", "gateway", detalle)
+    return jsonify({"publicado": True, "pedido": pedido})
 
 
 @bp.get("/credenciales-mqtt")

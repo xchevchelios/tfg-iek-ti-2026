@@ -197,6 +197,40 @@
           mismos parámetros se pueden cambiar con <code>gestor.py</code> en la VM;
           siempre se publica el documento completo, así que vale el último cambio.
         </p>
+
+        <h3 class="gw-subtitulo dbg-titulo">Debug LoRa</h3>
+        <p class="nota">
+          Prueba de comunicación con un nodo, como el sketch "pedir dato por LoRa":
+          el gateway le pide el dato cada cierto tiempo y muestra acá si respondió,
+          en cuánto y con qué RSSI. <strong>Mientras dura, las rondas normales se
+          pausan</strong> (empieza al terminar la ronda en curso) y se reanudan solas
+          al terminar. Necesita el firmware 2.7.0 del gateway.
+        </p>
+        <p id="dbg-estado" class="dbg-estado" aria-live="polite">Inactivo</p>
+        <form id="dbg-form" class="dbg-form" novalidate>
+          <label>Estación (dirección LoRa)
+            <input name="nodo" type="number" min="1" max="254" step="1" value="2" inputmode="numeric"></label>
+          <label>Un pedido cada (ms)
+            <input name="periodo_ms" type="number" min="1000" max="60000" step="100" value="5000" inputmode="numeric"></label>
+          <label>Timeout (ms)
+            <input name="timeout_ms" type="number" min="500" max="59900" step="100" value="4000" inputmode="numeric"></label>
+          <label>Duración máxima (min)
+            <input name="duracion_min" type="number" min="1" max="60" step="1" value="10" inputmode="numeric"></label>
+          <div class="gw-acciones">
+            <button type="submit" id="dbg-iniciar">Iniciar</button>
+            <button type="button" id="dbg-detener" disabled>Detener</button>
+            <button type="button" id="dbg-limpiar">Limpiar log</button>
+          </div>
+        </form>
+        <div class="tabla-scroll dbg-log">
+          <table class="tabla">
+            <thead>
+              <tr><th>Hora</th><th>Evento</th><th>Pedido</th><th>Nodo</th><th>Tiempo</th><th>RSSI</th><th>Tasa</th><th>Detalle</th></tr>
+            </thead>
+            <tbody id="dbg-log"></tbody>
+          </table>
+          <p id="dbg-vacio" class="nota">Sin eventos todavía. El log se ve mientras esta pestaña está abierta.</p>
+        </div>
       </section>
 
       <section class="panel" data-panel="fiabilidad" role="tabpanel" hidden>

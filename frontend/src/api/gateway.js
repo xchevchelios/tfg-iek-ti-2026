@@ -7,6 +7,9 @@ export const leerLimites = () => api.get('/api/gateway/limites');
 /** Publica el documento completo de parametros (el servidor lo valida). */
 export const guardarParametros = (parametros) => api.put('/api/gateway/parametros', parametros);
 
+/** Inicia ({activo: true, nodo, periodo_ms, timeout_ms, duracion_s}) o detiene ({activo: false}) el debug LoRa. */
+export const iniciarDebugLora = (pedido) => api.post('/api/gateway/debug', pedido);
+
 /** Usuario MQTT de solo lectura; la API lo entrega solo con sesion iniciada. */
 export const credencialesMqtt = () => api.get('/api/gateway/credenciales-mqtt');
 

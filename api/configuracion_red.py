@@ -31,6 +31,7 @@ log = logging.getLogger("configuracion_red")
 
 TOPIC_NODOS = "gateway/config/nodos"
 TOPIC_PARAMETROS = "gateway/config/parametros"
+TOPIC_DEBUG = "gateway/debug/config"
 
 # Tope de la red. No lo impone la memoria del ESP32 sino el tiempo en el aire:
 # con un canal, un SF y hasta 3 s de espera por nodo, una ronda de 32 nodos ya
@@ -52,8 +53,9 @@ def direcciones_activas():
     return [f["direccion_lora"] for f in filas][:MAX_NODOS]
 
 
-def _publicar_retenido(topic, carga):
-    """Publica `carga` retenida y con QoS 1. True si el broker la confirmo."""
+def _publicar_retenido(topic, carga, retener=True):
+    """Publica `carga` (retenida salvo `retener=False`) con QoS 1. True si el
+    broker la confirmo."""
     cliente = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
                           client_id=f"tfg_api_{topic.rsplit('/', 1)[-1]}")
     if config.MQTT_USER:
@@ -64,7 +66,7 @@ def _publicar_retenido(topic, carga):
         cliente.loop_start()
         # QoS 1 y retained: el broker confirma la entrega y guarda el mensaje
         # para los suscriptores futuros.
-        info = cliente.publish(topic, carga, qos=1, retain=True)
+        info = cliente.publish(topic, carga, qos=1, retain=retener)
         info.wait_for_publish(timeout=5)
         return info.is_published()
     except Exception:
@@ -169,4 +171,46 @@ def publicar_parametros(p):
     entregado = _publicar_retenido(TOPIC_PARAMETROS, carga)
     if entregado:
         log.info("Parametros publicados: %s", carga)
+    return entregado
+
+
+# --- Debug LoRa (firmware 2.7.0 en adelante) ---
+# El gateway pausa las rondas y le pide el dato a un nodo cada periodo_ms,
+# esperando hasta timeout_ms; publica cada pedido en gateway/debug/log. Los
+# rangos son los mismos que valida el firmware (depuracion.h).
+LIMITES_DEBUG = {
+    "nodo": (1, 254),
+    "periodo_ms": (1000, 60000),
+    "timeout_ms": (500, 59900),
+    "duracion_s": (60, 3600),
+}
+DEBUG_POR_DEFECTO = {"nodo": 1, "periodo_ms": 5000, "timeout_ms": 4000, "duracion_s": 600}
+HUECO_DEBUG_MS = 100   # entre el fin de la espera y el pedido siguiente
+
+
+def validar_debug(d):
+    """None si el pedido de debug es valido; si no, el motivo."""
+    if not isinstance(d.get("activo"), bool):
+        return "activo tiene que ser true o false."
+    if not d["activo"]:
+        return None
+    for clave, (minimo, maximo) in LIMITES_DEBUG.items():
+        valor = d.get(clave)
+        if isinstance(valor, bool) or not isinstance(valor, int):
+            return f"{clave} tiene que ser un número entero."
+        if not minimo <= valor <= maximo:
+            return f"{clave} tiene que estar entre {minimo} y {maximo}."
+    if d["timeout_ms"] + HUECO_DEBUG_MS > d["periodo_ms"]:
+        return f"El timeout tiene que ser al menos {HUECO_DEBUG_MS} ms menor que el periodo."
+    return None
+
+
+def publicar_debug(d):
+    """Manda el pedido de debug al gateway. No se retiene: si quedara en el
+    broker, el gateway volveria a entrar en debug cada vez que se reconecte."""
+    carga = json.dumps({"activo": True, **{clave: d[clave] for clave in DEBUG_POR_DEFECTO}}
+                       if d["activo"] else {"activo": False})
+    entregado = _publicar_retenido(TOPIC_DEBUG, carga, retener=False)
+    if entregado:
+        log.info("Debug LoRa publicado: %s", carga)
     return entregado
