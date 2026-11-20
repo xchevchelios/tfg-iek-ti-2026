@@ -8,6 +8,10 @@
  *
  * Todo el contenido se escribe como texto (textContent), nunca como HTML: lo
  * que llega por el broker no se interpreta.
+ *
+ * En pantalla cada mensaje se recorta a MAX_CARGA caracteres, pero se copia
+ * entero: con el boton Copiar (los que pasan el filtro) o con doble clic en
+ * una linea (ese mensaje, con el JSON formateado).
  */
 import { alCambiarEstadoPanel, alRecibirMensaje } from '../api/mqttPanel.js';
 
@@ -50,6 +54,52 @@ function rssiDe(texto) {
   }
 }
 
+/** Un mensaje completo, en una linea, para copiar: hora, R si es retenido, topic y carga. */
+function textoCompleto(mensaje) {
+  const hora = mensaje.hora.toLocaleTimeString('es-PY', { hour12: false });
+  return `${hora} ${mensaje.retenido ? 'R' : ' '} ${mensaje.topic} ${mensaje.texto}`;
+}
+
+/** El mensaje con el JSON indentado, para leerlo o pegarlo en un chat. */
+function textoFormateado(mensaje) {
+  let carga = mensaje.texto;
+  try {
+    carga = JSON.stringify(JSON.parse(mensaje.texto), null, 2);
+  } catch {
+    // no es JSON: va tal cual
+  }
+  const hora = mensaje.hora.toLocaleTimeString('es-PY', { hour12: false });
+  return `${hora}${mensaje.retenido ? ' (retenido)' : ''} ${mensaje.topic}\n${carga}`;
+}
+
+async function copiar(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    // Sin permiso o sin API (contexto no seguro): el metodo viejo.
+    const area = document.createElement('textarea');
+    area.value = texto;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.append(area);
+    area.select();
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  }
+}
+
+let avisoCopia = null;
+function avisarCopia(texto) {
+  const caja = $('term-copiado');
+  caja.textContent = texto;
+  caja.hidden = false;
+  clearTimeout(avisoCopia);
+  avisoCopia = setTimeout(() => { caja.hidden = true; }, 2500);
+}
+
 function pasaFiltro(mensaje) {
   const filtro = $('term-filtro').value.trim().toLowerCase();
   return !filtro || mensaje.topic.toLowerCase().includes(filtro);
@@ -58,6 +108,12 @@ function pasaFiltro(mensaje) {
 function linea(mensaje) {
   const div = document.createElement('div');
   div.className = `term-linea term-linea--${tipo(mensaje.topic)}`;
+  div.title = 'Doble clic para copiar el mensaje completo';
+  div.addEventListener('dblclick', async () => {
+    window.getSelection()?.removeAllRanges();   // el doble clic selecciona una palabra
+    const ok = await copiar(textoFormateado(mensaje));
+    avisarCopia(ok ? `Copiado: ${mensaje.topic}` : 'No se pudo copiar');
+  });
 
   const hora = document.createElement('span');
   hora.className = 't-hora';
@@ -160,6 +216,28 @@ export function iniciarTerminal() {
     $('term-pausa').setAttribute('aria-pressed', String(pausado));
     if (!pausado) renderizarTodo();
     else actualizarContador();
+  });
+
+  $('term-copiar').addEventListener('click', async () => {
+    const mensajes = buffer.filter(pasaFiltro);
+    if (!mensajes.length) {
+      avisarCopia('No hay mensajes para copiar');
+      return;
+    }
+    const ok = await copiar(mensajes.map(textoCompleto).join('\n'));
+    avisarCopia(ok ? `Copiados ${mensajes.length} mensajes completos` : 'No se pudo copiar');
+  });
+
+  // Ctrl+A dentro de la terminal selecciona solo la terminal, no la pagina.
+  $('term-salida').addEventListener('keydown', (evento) => {
+    if ((evento.ctrlKey || evento.metaKey) && evento.key.toLowerCase() === 'a') {
+      evento.preventDefault();
+      const rango = document.createRange();
+      rango.selectNodeContents($('term-salida'));
+      const seleccion = window.getSelection();
+      seleccion.removeAllRanges();
+      seleccion.addRange(rango);
+    }
   });
 
   $('term-limpiar').addEventListener('click', () => {

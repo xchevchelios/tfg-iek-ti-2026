@@ -300,7 +300,9 @@
                  aria-label="Filtrar por topic">
           <label class="term-check"><input id="term-seguir" type="checkbox" checked> Seguir al final</label>
           <button type="button" id="term-pausa" aria-pressed="false">Pausar</button>
+          <button type="button" id="term-copiar" title="Copia completos los mensajes que pasan el filtro">Copiar</button>
           <button type="button" id="term-limpiar">Limpiar</button>
+          <span id="term-copiado" class="term-copiado" role="status" hidden></span>
         </div>
         <div id="term-salida" class="terminal" role="log" aria-live="off" tabindex="0"
              aria-label="Mensajes MQTT recibidos"></div>
@@ -309,7 +311,10 @@
           Suscripción de solo lectura a <code>estaciones/#</code> y <code>gateway/#</code>.
           Una <strong>R</strong> marca un mensaje retenido: el broker lo entrega al
           conectarse porque es el último estado conocido, no porque acabe de llegar.
-          Se conservan los últimos 500 mensajes.
+          Se conservan los últimos 500 mensajes. En pantalla cada mensaje se corta a
+          400 caracteres: <strong>Copiar</strong> copia completos los que pasan el
+          filtro, y un <strong>doble clic</strong> en una línea copia ese mensaje con
+          el JSON formateado. Para seleccionar a mano, conviene pausar primero.
         </p>
       </section>
 

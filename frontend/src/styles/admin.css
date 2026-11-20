@@ -315,6 +315,9 @@
 .term-linea--lwt .t-topic { color: #d2a8ff; }
 .t-rssi { color: #56d4dd; font-weight: 600; }
 .term-contador { margin: 8px 0 0; font-size: 0.85em; color: var(--texto-tenue); }
+.term-copiado { font-size: 0.88em; color: var(--verde); font-weight: 600; }
+.term-linea { cursor: default; }
+.term-linea:hover { background: #161b22; }
 
 /* ---------- Calibración ---------- */
 .cal-tabla td { white-space: nowrap; }
